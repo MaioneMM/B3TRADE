@@ -125,6 +125,10 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       return addToast("Preço do ativo inválido. Aguarde a cotação carregar.", "error");
     }
 
+    if (quantity <= 0 || !Number.isInteger(quantity)) {
+      return addToast("A quantidade de ações deve ser um número inteiro e maior que zero.", "error");
+    }
+
     const totalCost = quantity * currentPrice;
     if (balance < totalCost) {
       return addToast(`Saldo insuficiente! Custo: R$ ${totalCost.toFixed(2)}, Saldo: R$ ${balance.toFixed(2)}`, "error");
@@ -219,6 +223,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const sellMarket = async (ticker: string, quantity: number, currentPrice: number, currentTime: string) => {
     if (!user) return addToast("Você precisa estar logado.", "error");
     if (currentPrice <= 0) return addToast("Preço do ativo inválido.", "error");
+    if (quantity <= 0 || !Number.isInteger(quantity)) return addToast("A quantidade a ser vendida deve ser maior que zero.", "error");
 
     const existingPosition = positions.find(p => p.ticker === ticker);
     if (!existingPosition || existingPosition.quantity < quantity) {
@@ -285,6 +290,9 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const addPendingOrder = async (order: Omit<PendingOrder, 'id'>) => {
     if (!user) return addToast("Logue-se primeiro.", "error");
+    if (order.quantity <= 0 || !Number.isInteger(order.quantity)) {
+        return addToast("A quantidade da ordem agendada deve ser inteira e maior que zero.", "error");
+    }
 
     if (order.type === 'BUY_LIMIT') {
       const requiredBalance = order.quantity * order.targetPrice;
