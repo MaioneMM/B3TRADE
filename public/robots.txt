@@ -1,0 +1,6 @@
+Sitemap: https://brapi.ga/api/sitemap
+
+User-agent: *
+Allow: /*
+
+Disallow:
