@@ -89,7 +89,13 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
           { headers: YF_HEADERS },
         );
 
-        // ─── Requisição 2: TradingView scanner (dados enriquecidos) ───
+        // ─── Requisição 2: Yahoo Finance v8 (Apenas 1 dia para pegar o fechamento de ontem garantido) ───
+        const metaPromise = axios.get(
+          `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}.SA?interval=1d&range=1d`,
+          { headers: YF_HEADERS },
+        );
+
+        // ─── Requisição 3: TradingView scanner (dados enriquecidos) ───
         const tvPromise = axios.post(
           'https://scanner.tradingview.com/brazil/scan',
           {
@@ -103,9 +109,10 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
         );
 
         // Executa em paralelo
-        const [chartResponse, tvResponse] = await Promise.all([
+        const [chartResponse, metaResponse, tvResponse] = await Promise.all([
           chartPromise,
-          tvPromise.catch(() => null), // fallback gracioso se o TV falhar
+          metaPromise.catch(() => null),
+          tvPromise.catch(() => null), 
         ]);
 
         const chartResult = chartResponse.data?.chart?.result?.[0];
@@ -114,6 +121,7 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
         }
 
         const meta = chartResult.meta;
+        const metaResult = metaResponse?.data?.chart?.result?.[0]?.meta || {};
         const tvData: any[] = tvResponse?.data?.data?.[0]?.d ?? [];
 
         // ─── Dados do TradingView ───
@@ -125,17 +133,21 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
         const tvOpen          = tvData[5] ?? null;
         // tvData[6..8] = close, high, low (cross-check com meta)
 
-        // ─── Abertura do dia (TV > primeiro candle do gráfico) ───
-        const regularMarketOpen =
-          tvOpen ??
-          chartResult.indicators?.quote?.[0]?.open?.[0] ??
-          null;
+        // ─── Dados do Yahoo Finance (Priorizando a consulta de 1 dia para precisão) ───
+        const regularMarketPrice = 
+          metaResult.regularMarketPrice ?? meta.regularMarketPrice;
+        
+        const regularMarketPreviousClose = 
+          metaResult.chartPreviousClose ?? meta.previousClose ?? meta.chartPreviousClose;
 
-        // ─── Cálculos derivados ───
-        const regularMarketChange =
-          meta.regularMarketPrice - meta.chartPreviousClose;
-        const regularMarketChangePercent =
-          (regularMarketChange / meta.chartPreviousClose) * 100;
+        const regularMarketChange = 
+          regularMarketPrice - regularMarketPreviousClose;
+        
+        const regularMarketChangePercent = 
+          (regularMarketChange / regularMarketPreviousClose) * 100;
+
+        const regularMarketOpen =
+          metaResult.regularMarketOpen ?? tvOpen ?? chartResult.indicators?.quote?.[0]?.open?.[0] ?? null;
 
         // ─── Histórico (se solicitado) ───
         const getHistory = () => {
@@ -160,15 +172,15 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
           currency:   meta.currency,
           marketCap,
 
-          regularMarketPrice:         meta.regularMarketPrice,
+          regularMarketPrice:         regularMarketPrice,
           regularMarketChange:        regularMarketChange,
           regularMarketChangePercent: regularMarketChangePercent,
-          regularMarketTime:          new Date(meta.regularMarketTime * 1000),
-          regularMarketDayHigh:       meta.regularMarketDayHigh,
-          regularMarketDayLow:        meta.regularMarketDayLow,
-          regularMarketDayRange:      `${meta.regularMarketDayLow} - ${meta.regularMarketDayHigh}`,
-          regularMarketVolume:        meta.regularMarketVolume,
-          regularMarketPreviousClose: meta.chartPreviousClose,
+          regularMarketTime:          new Date((metaResult.regularMarketTime ?? meta.regularMarketTime) * 1000),
+          regularMarketDayHigh:       metaResult.regularMarketDayHigh ?? meta.regularMarketDayHigh,
+          regularMarketDayLow:        metaResult.regularMarketDayLow ?? meta.regularMarketDayLow,
+          regularMarketDayRange:      `${metaResult.regularMarketDayLow ?? meta.regularMarketDayLow} - ${metaResult.regularMarketDayHigh ?? meta.regularMarketDayHigh}`,
+          regularMarketVolume:        metaResult.regularMarketVolume ?? meta.regularMarketVolume,
+          regularMarketPreviousClose: regularMarketPreviousClose,
           regularMarketOpen,
 
           fiftyTwoWeekRange:              `${meta.fiftyTwoWeekLow} - ${meta.fiftyTwoWeekHigh}`,

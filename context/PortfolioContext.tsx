@@ -80,7 +80,14 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setPositions([]);
         setOrders([]);
         setPendingOrders([]);
-        setFavorites(['PETR4', 'VALE3', 'ITUB4']);
+        
+        let savedFavs = ['PETR4', 'VALE3', 'ITUB4'];
+        try {
+          const local = localStorage.getItem('favorites');
+          if (local) savedFavs = JSON.parse(local);
+        } catch(e) {}
+        setFavorites(savedFavs);
+        
         setIsLoaded(true);
       }
     });
@@ -319,6 +326,11 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       } catch (err) {
         console.error("Falha ao salvar favoritos", err);
       }
+    } else {
+      try {
+        localStorage.setItem('favorites', JSON.stringify(newFavs));
+        addToast(isFav ? `${ticker} removido dos favoritos.` : `${ticker} adicionado aos favoritos.`, "info");
+      } catch(e) {}
     }
   };
 
