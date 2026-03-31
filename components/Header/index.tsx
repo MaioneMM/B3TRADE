@@ -12,7 +12,7 @@ const Header: React.FC = () => {
   const [scrolled, setScrolled] = useState(false);
 
   // Detect if we're inside the simulator/platform environment
-  const isSimulatorEnv = router.pathname.startsWith('/simulator');
+  const isSimulatorEnv = router.pathname.startsWith('/simulator') || router.pathname.startsWith('/commodities');
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -42,6 +42,7 @@ const Header: React.FC = () => {
               <Link href="/simulator" className="nav-link">Terminal</Link>
               <Link href="/simulator/dashboard" className="nav-link" style={{ color: '#26a69a' }}>Carteira</Link>
               <Link href="/simulator/ranking" className="nav-link" style={{ color: '#FFD700' }}>Ranking</Link>
+              <Link href="/commodities" className="nav-link" style={{ color: '#f59e0b' }}>Commodities</Link>
               <span style={{ color: '#444', padding: '0 4px' }}>|</span>
               <span style={{ fontSize: '0.85rem', color: '#888' }}>
                 <FiUser size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} />
@@ -105,6 +106,9 @@ const Header: React.FC = () => {
               </Link>
               <Link href="/simulator/ranking" className="mobile-link" onClick={() => setOpen(false)} style={{ color: '#FFD700' }}>
                 🏆 Pódio/Ranking
+              </Link>
+              <Link href="/commodities" className="mobile-link" onClick={() => setOpen(false)} style={{ color: '#f59e0b' }}>
+                🛢️ Commodities
               </Link>
               <div className="mobile-divider" />
               <button

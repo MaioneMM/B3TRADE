@@ -28,6 +28,19 @@ const validRanges = [
   '1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', '10y', 'ytd', 'max',
 ];
 
+// ─── Cache Server-Side ───────────────────────────────────────────────────────
+const CACHE_TTL_MS = 30_000;
+
+interface CacheEntry {
+  data: any;
+  fetchedAt: number;
+}
+
+const cache = new Map<string, CacheEntry>();
+
+const isCacheValid = (entry: CacheEntry) =>
+  Date.now() - entry.fetchedAt < CACHE_TTL_MS;
+
 export default async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.headers['user-agent']?.includes('python-requests')) {
     res.setHeader('Cache-Control', 's-maxage=2592000, stale-while-revalidate');
@@ -47,7 +60,9 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
 
   if (!slugs) return;
 
-  res.setHeader('Cache-Control', 's-maxage=900, stale-while-revalidate');
+  // Substituímos o cache da Vercel (Edge) por no-store, 
+  // pois o cache que importa agora é o nosso em memória (Server-Side)
+  res.setHeader('Cache-Control', 'no-store');
 
   const startTime = Date.now();
 
@@ -58,6 +73,14 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
       try {
         const chartInterval = interval && range ? String(interval) : '1d';
         const chartRange    = interval && range ? String(range)    : '5d';
+        
+        const cacheKey = `${symbol}-${chartInterval}-${chartRange}`;
+        const cached = cache.get(cacheKey);
+
+        // Se tem cache válido em memória, retorna instantâneo sem bater no Yahoo Finance
+        if (cached && isCacheValid(cached)) {
+          return cached.data;
+        }
 
         // ─── Requisição 1: Yahoo Finance v8 (cotação + histórico) ───
         const chartPromise = axios.get(
@@ -173,8 +196,19 @@ export default async (req: NextApiRequest, res: NextApiResponse) => {
           quote.historicalDataPrice = getHistory();
         }
 
+        cache.set(cacheKey, { data: quote, fetchedAt: Date.now() });
+
         return quote;
       } catch (err: any) {
+        const chartInterval = interval && range ? String(interval) : '1d';
+        const chartRange    = interval && range ? String(range)    : '5d';
+        const cacheKey = `${symbol}-${chartInterval}-${chartRange}`;
+        const stale = cache.get(cacheKey);
+        
+        if (stale) {
+          return { ...stale.data, stale: true };
+        }
+
         throw new Error(
           err.message?.startsWith('Não encontramos')
             ? err.message

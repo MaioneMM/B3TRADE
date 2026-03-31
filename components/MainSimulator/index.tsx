@@ -11,6 +11,8 @@ const MainSimulator = () => {
   const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
   const sma9Ref = useRef<ISeriesApi<"Line"> | null>(null);
   const sma21Ref = useRef<ISeriesApi<"Line"> | null>(null);
+  // Guarda o timestamp da última vela histórica para o polling não criar velas novas
+  const lastCandleTimeRef = useRef<number | null>(null);
 
   // Indicator toggles
   const [showVolume, setShowVolume] = useState(true);
@@ -28,7 +30,9 @@ const MainSimulator = () => {
   const [targetPrice, setTargetPrice] = useState<number>(0);
   const [stopLoss, setStopLoss] = useState<number | ''>('');
   const [takeProfit, setTakeProfit] = useState<number | ''>('');
-
+  const [showHelp, setShowHelp] = useState(false);
+  const [marketStatus, setMarketStatus] = useState<'ABERTO' | 'FECHANDO' | 'FECHADO'>('ABERTO');
+  const [clockTime, setClockTime] = useState<string>('');
   // ---- CANDLE INTERVAL (tamanho da vela) ----
   type CandleInterval = { label: string; interval: string; defaultRange: string; supportsTime: boolean };
   const INTERVALS: CandleInterval[] = [
@@ -214,7 +218,12 @@ const MainSimulator = () => {
         // }
 
         // ---- CANDLESTICK ----
-        seriesRef.current.setData(uniqueData.map((d: any) => ({ time: d.time, open: d.open, high: d.high, low: d.low, close: d.close })));
+        const candleData = uniqueData.map((d: any) => ({ time: d.time, open: d.open, high: d.high, low: d.low, close: d.close }));
+        seriesRef.current.setData(candleData);
+        // Salva o tempo da última vela histórica para o polling reusar sempre o mesmo timestamp
+        if (candleData.length > 0) {
+          lastCandleTimeRef.current = candleData[candleData.length - 1].time;
+        }
 
         // ---- VOLUME ----
         if (volumeSeriesRef.current) {
@@ -277,13 +286,27 @@ const MainSimulator = () => {
     const fetchLiveSpot = async () => {
       try {
         const liveRes = await axios.get(`/api/quote/${ticker}`);
-        const spotPrice = liveRes.data.results[0]?.regularMarketPrice;
-        const spotTime = liveRes.data.results[0]?.regularMarketTime || new Date().toISOString();
+        const result = liveRes.data.results[0];
+        const spotPrice = result?.regularMarketPrice;
+        const spotTime = result?.regularMarketTime || Math.floor(Date.now() / 1000);
         
         if (spotPrice) {
           // Atualiza a Cotação Vivo sem usar dados do gráfico
           setCurrentPrice(spotPrice);
           processPendingOrders(ticker, spotPrice, spotTime);
+
+          // Sincroniza o gráfico: atualiza APENAS a última vela histórica com o preço ao vivo.
+          // Usamos lastCandleTimeRef para garantir que sempre atualizamos o mesmo candle
+          // existente, sem criar candles novos a cada poll.
+          if (seriesRef.current && lastCandleTimeRef.current !== null) {
+            seriesRef.current.update({
+              time: lastCandleTimeRef.current as any,
+              open: result?.regularMarketOpen ?? spotPrice,
+              high: result?.regularMarketDayHigh ?? spotPrice,
+              low: result?.regularMarketDayLow ?? spotPrice,
+              close: spotPrice,
+            });
+          }
         }
       } catch (err) {
         console.error("Live polling failed", err);
@@ -293,11 +316,45 @@ const MainSimulator = () => {
     // Dispara a requisição IMEDIATAMENTE (Fechando o gap zero de preço)
     fetchLiveSpot();
 
-    // Mantém o loop temporal de mercado
-    const interval = setInterval(fetchLiveSpot, 5000);
+    // Mantém o loop temporal de mercado (a cada 1s)
+    const interval = setInterval(fetchLiveSpot, 1000);
 
     return () => clearInterval(interval);
   }, [ticker]); // Retiramos o processPendingOrders para não ativar fetchs duplicados ao engatilhar uma requisição OCO
+
+  // MARKET CLOCK LOGIC
+  useEffect(() => {
+    const updateMarketClock = () => {
+      const now = new Date();
+      // Formata a hora para Brasília
+      const timeString = now.toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour12: false });
+      setClockTime(timeString);
+
+      // Usando o formatter para extrair especificamente os componentes de Brasília
+      const spTimeString = now.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo', hour12: false });
+      const spDate = new Date(spTimeString);
+      
+      const day = spDate.getDay();
+      const hours = spDate.getHours();
+      const minutes = spDate.getMinutes();
+      
+      // B3 Aberta: Seg a Sex (1 a 5), das 10h às 17h59 (Simplificação incluindo after-market)
+      const isWeekend = day === 0 || day === 6;
+      const isTradingHours = hours >= 10 && hours < 18;
+      
+      if (isWeekend || !isTradingHours) {
+        setMarketStatus('FECHADO');
+      } else if (hours === 17 && minutes >= 55) {
+        setMarketStatus('FECHANDO');
+      } else {
+        setMarketStatus('ABERTO');
+      }
+    };
+
+    updateMarketClock();
+    const clkInterval = setInterval(updateMarketClock, 1000);
+    return () => clearInterval(clkInterval);
+  }, []);
 
   return (
     <Container>
@@ -437,6 +494,9 @@ const MainSimulator = () => {
                    key={fav} 
                    onClick={() => setTicker(fav)}
                    style={{ 
+                     display: 'flex',
+                     alignItems: 'center',
+                     gap: '6px',
                      padding: '0.3rem 0.8rem', 
                      borderRadius: '20px', 
                      backgroundColor: ticker === fav ? '#26a69a' : '#333', 
@@ -446,6 +506,14 @@ const MainSimulator = () => {
                      cursor: 'pointer',
                      transition: '0.2s'
                    }}>
+                   <img 
+                     src={`https://icons.brapi.dev/icons/${fav}.svg`} 
+                     alt={`${fav} logo`} 
+                     width="16" 
+                     height="16" 
+                     style={{ borderRadius: '50%', backgroundColor: '#fff', objectFit: 'contain' }}
+                     onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                   />
                    {fav}
                  </button>
               ))}
@@ -456,7 +524,37 @@ const MainSimulator = () => {
         </ChartContainer>
 
         <OrderPanelContainer>
-          <h2>Boleta Rápida</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <h2 style={{ margin: 0 }}>Boleta Rápida</h2>
+              <button 
+                onClick={() => setShowHelp(true)}
+                style={{
+                  width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#444', 
+                  color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', 
+                  alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 'bold'
+                }}
+                title="Ajuda / Como funciona a Boleta"
+              >
+                ?
+              </button>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem' }}>
+               <span style={{ fontFamily: 'monospace', color: '#aaa', fontSize: '0.9rem' }}>{clockTime}</span>
+               <span style={{ 
+                 backgroundColor: marketStatus === 'ABERTO' ? '#26a69a22' : marketStatus === 'FECHANDO' ? '#ff980022' : '#ef535022',
+                 color: marketStatus === 'ABERTO' ? '#26a69a' : marketStatus === 'FECHANDO' ? '#ff9800' : '#ef5350',
+                 padding: '2px 8px',
+                 borderRadius: '4px',
+                 fontWeight: 'bold',
+                 textTransform: 'uppercase',
+                 fontSize: '0.75rem'
+               }}>
+                 {marketStatus}
+               </span>
+            </div>
+          </div>
           <div className="panel-body">
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span>Carteira Livre:</span>
@@ -533,9 +631,20 @@ const MainSimulator = () => {
 
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
               <button 
-                className="buy" 
-                title={orderType === 'MARKET' ? "Comprar AGORA pelo preço atual de mercado." : "Agendar compra se o preço CAIR até o Alvo."}
+                className="buy"
+                disabled={marketStatus === 'FECHADO'}
+                style={{ 
+                  opacity: marketStatus === 'FECHADO' ? 0.3 : 1, 
+                  cursor: marketStatus === 'FECHADO' ? 'not-allowed' : 'pointer',
+                  pointerEvents: marketStatus === 'FECHADO' ? 'none' : 'auto'
+                }}
+                title={
+                  marketStatus === 'FECHADO' 
+                    ? "Mercado FECHADO. Operações bloqueadas." 
+                    : (orderType === 'MARKET' ? "Comprar AGORA pelo preço atual de mercado." : "Agendar compra se o preço CAIR até o Alvo.")
+                }
                 onClick={() => {
+                  if (marketStatus === 'FECHADO') return;
                   if (orderType === 'MARKET') buyMarket(ticker, Number(orderQty), currentPrice, currentTime, Number(stopLoss) || undefined, Number(takeProfit) || undefined);
                   else addPendingOrder({ ticker, type: 'BUY_LIMIT', quantity: Number(orderQty), targetPrice, time: currentTime });
                 }}>
@@ -543,8 +652,19 @@ const MainSimulator = () => {
               </button>
               <button 
                 className="sell" 
-                title={orderType === 'MARKET' ? "Vender AGORA a quantidade indicada pelo preço de mercado." : "Agendar venda se o preço SUBIR/CAIR até o Alvo."}
+                disabled={marketStatus === 'FECHADO'}
+                style={{ 
+                  opacity: marketStatus === 'FECHADO' ? 0.3 : 1, 
+                  cursor: marketStatus === 'FECHADO' ? 'not-allowed' : 'pointer',
+                  pointerEvents: marketStatus === 'FECHADO' ? 'none' : 'auto'
+                }}
+                title={
+                  marketStatus === 'FECHADO' 
+                    ? "Mercado FECHADO. Operações bloqueadas." 
+                    : (orderType === 'MARKET' ? "Vender AGORA a quantidade indicada pelo preço de mercado." : "Agendar venda se o preço SUBIR/CAIR até o Alvo.")
+                }
                 onClick={() => {
+                  if (marketStatus === 'FECHADO') return;
                   if (orderType === 'MARKET') sellMarket(ticker, Number(orderQty), currentPrice, currentTime);
                   else addPendingOrder({ ticker, type: 'SELL_LIMIT', quantity: Number(orderQty), targetPrice, time: currentTime });
                 }}>
@@ -602,6 +722,55 @@ const MainSimulator = () => {
           </div>
         </OrderPanelContainer>
       </SimulatorGrid>
+
+      {/* BOLETA HELP MODAL */}
+      {showHelp && (
+        <div 
+          onClick={() => setShowHelp(false)}
+          style={{
+            position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', 
+            backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', 
+            alignItems: 'center', justifyContent: 'center'
+          }}
+        >
+          <div 
+            onClick={e => e.stopPropagation()}
+            style={{
+              backgroundColor: '#1E1E24', padding: '2rem', borderRadius: '8px', 
+              maxWidth: '550px', width: '90%', color: '#E0E0E0', 
+              boxShadow: '0px 10px 40px rgba(0,0,0,0.8)', position: 'relative'
+            }}
+          >
+            <button 
+              onClick={() => setShowHelp(false)}
+              style={{
+                position: 'absolute', top: '15px', right: '15px', background: 'none', 
+                border: 'none', color: '#999', fontSize: '1.2rem', cursor: 'pointer'
+              }}
+            >
+              ✕
+            </button>
+            <h2 style={{ marginTop: 0, color: '#26a69a' }}>Como funciona a Boleta?</h2>
+            <p style={{ fontSize: '0.95rem', lineHeight: '1.6' }}>
+              A <strong>Boleta Rápida</strong> é o seu painel de controle operacional para envio de ordens ao mercado.
+            </p>
+            <ul style={{ fontSize: '0.9rem', lineHeight: '1.8', color: '#ccc', paddingLeft: '1.2rem', marginTop: '1rem' }}>
+              <li><strong style={{ color: '#fff' }}>A Mercado:</strong> Executa a sua compra ou venda <em>imediatamente</em> pelo preço atual. Opcionalmente, você pode deixar programado um <strong>Alvo Gain</strong> (onde você sai no lucro) ou um <strong>Stop Loss</strong> (limite de perda automático).</li>
+              <li><strong style={{ color: '#fff' }}>Limitada/Stop:</strong> Serve para fazer agendamentos. Você define um <strong>Preço Alvo</strong>, e a ordem fica na "fila" (Ordens Pendentes). O sistema só executará a ordem se a cotação ao vivo cruzar ou atingir este preço que você determinou no futuro.</li>
+              <li><strong style={{ color: '#fff' }}>Ordens Pendentes:</strong> Aqui ficam suas ordens de gaveta (Limitadas e Stops) esperando a cotação chegar no alvo. Você pode cancelá-las no botão vermelho [ X ] a qualquer momento.</li>
+              <li><strong style={{ color: '#fff' }}>Minhas Posições:</strong> Todos os ativos que você tem na carteira ficam listados aqui, junto com seu Lucro/Prejuízo exibido em tempo real piscando na tela.</li>
+              <li style={{ marginTop: '0.5rem' }}><strong style={{ color: '#fff' }}>Relógio de Mercado:</strong> Indica se você pode negociar agora. 
+                <span style={{ color: '#26a69a' }}> 🟢 Aberto</span>, 
+                <span style={{ color: '#ff9800' }}> 🟠 Fechando</span> (faltam menos de 5 min para o mercado fechar), e 
+                <span style={{ color: '#ef5350' }}> 🔴 Fechado</span> (as sextas após as 18h e fds. Operações ficam bloqueadas).
+              </li>
+            </ul>
+            <p style={{ fontSize: '0.85rem', color: '#888', fontStyle: 'italic', marginTop: '1.5rem', textAlign: 'center' }}>
+              Lembre-se: Como este é um simulador, suas ordens não afetam o mercado real local (da B3). O saldo utilizado é totalmente virtual.
+            </p>
+          </div>
+        </div>
+      )}
     </Container>
   );
 };
