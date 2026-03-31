@@ -20,10 +20,11 @@ export interface Order {
 export interface PendingOrder {
   id: string;
   ticker: string;
-  type: 'BUY_LIMIT' | 'SELL_LIMIT';
+  type: 'BUY_LIMIT' | 'SELL_LIMIT' | 'SELL_STOP';
   quantity: number;
   targetPrice: number;
   time: string;
+  ocoId?: string; // One Cancels the Other Identifier
 }
 
 interface PortfolioContextProps {
@@ -33,7 +34,7 @@ interface PortfolioContextProps {
   pendingOrders: PendingOrder[];
   favorites: string[];
   isLoaded: boolean;
-  buyMarket: (ticker: string, quantity: number, currentPrice: number, currentTime: string) => Promise<void>;
+  buyMarket: (ticker: string, quantity: number, currentPrice: number, currentTime: string, stopLoss?: number, takeProfit?: number) => Promise<void>;
   sellMarket: (ticker: string, quantity: number, currentPrice: number, currentTime: string) => Promise<void>;
   addPendingOrder: (order: Omit<PendingOrder, 'id'>) => Promise<void>;
   cancelPendingOrder: (id: string) => Promise<void>;
@@ -83,7 +84,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setBalance(data.balance ?? INITIAL_BALANCE);
         setFavorites(data.favorites ?? ['PETR4', 'VALE3', 'ITUB4']);
       } else {
-        await setDoc(userRef, { balance: INITIAL_BALANCE, favorites: ['PETR4', 'VALE3', 'ITUB4'] });
+        await setDoc(userRef, { balance: INITIAL_BALANCE, favorites: ['PETR4', 'VALE3', 'ITUB4'] }, { merge: true });
         setBalance(INITIAL_BALANCE);
       }
 
@@ -110,9 +111,17 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  const buyMarket = async (ticker: string, quantity: number, currentPrice: number, currentTime: string) => {
-    if (!user) return alert("Você precisa estar logado para simular.");
+  const buyMarket = async (ticker: string, quantity: number, currentPrice: number, currentTime: string, stopLoss?: number, takeProfit?: number) => {
+    console.log(`[buyMarket] Iniciando compra de ${quantity} ${ticker} a R$${currentPrice}`);
+    if (!user) {
+      console.warn("[buyMarket] Usuário não está logado na sessão do React!");
+      return alert("Você precisa estar logado para simular.");
+    }
     
+    if (currentPrice <= 0) {
+      return alert("Preço do ativo inválido. Aguarde a cotação carregar.");
+    }
+
     const totalCost = quantity * currentPrice;
     if (balance < totalCost) {
       alert(`Saldo insuficiente! Custo: R$ ${totalCost.toFixed(2)}, Saldo: R$ ${balance.toFixed(2)}`);
@@ -121,7 +130,6 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     const newBalance = balance - totalCost;
     
-    // Find existing to calc new avg price
     let newQuantity = quantity;
     let newAvgPrice = currentPrice;
     const existing = positions.find(p => p.ticker === ticker);
@@ -134,24 +142,52 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     try {
       const batch = writeBatch(db);
       
-      // Update balance
+      // 1. Atualizar Saldo
       batch.set(doc(db, 'users', user.uid), { balance: newBalance }, { merge: true });
       
-      // Update pos
+      // 2. Atualizar Posição
       batch.set(doc(db, 'users', user.uid, 'positions', ticker), {
         ticker,
         quantity: newQuantity,
         averagePrice: newAvgPrice
       });
       
-      // Create order history
+      // 3. Registrar Histórico da Ordem
       const orderRef = doc(collection(db, 'users', user.uid, 'orders'));
       const newOrder: Order = { ticker, type: 'BUY', quantity, price: currentPrice, time: currentTime };
       batch.set(orderRef, newOrder);
 
+      // 4. Lógica OCO (Alvos Simultâneos)
+      const newPends: PendingOrder[] = [];
+      if (stopLoss || takeProfit) {
+        const ocoId = 'oco_' + Date.now().toString() + Math.random().toString(36).substring(2, 7);
+        
+        if (stopLoss && stopLoss > 0) {
+          if (stopLoss >= currentPrice) {
+             alert("O Stop Loss deve ser MENOR que o preço atual de compra.");
+             throw new Error("Invalid Stop Loss");
+          }
+          const pRef = doc(collection(db, 'users', user.uid, 'pendingOrders'));
+          const pObj: PendingOrder = { id: pRef.id, ticker, type: 'SELL_STOP', quantity, targetPrice: stopLoss, time: currentTime, ocoId };
+          batch.set(pRef, pObj);
+          newPends.push(pObj);
+        }
+        
+        if (takeProfit && takeProfit > 0) {
+          if (takeProfit <= currentPrice) {
+             alert("O Alvo de Lucro (Gain) deve ser MAIOR que o preço atual de compra.");
+             throw new Error("Invalid Take Profit");
+          }
+          const pRef = doc(collection(db, 'users', user.uid, 'pendingOrders'));
+          const pObj: PendingOrder = { id: pRef.id, ticker, type: 'SELL_LIMIT', quantity, targetPrice: takeProfit, time: currentTime, ocoId };
+          batch.set(pRef, pObj);
+          newPends.push(pObj);
+        }
+      }
+
       await batch.commit();
 
-      // Local state update
+      // Atualiza o estado da tela só se deu certo
       setBalance(newBalance);
       setPositions(prev => {
         if (existing) {
@@ -161,16 +197,25 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         }
       });
       setOrders(prev => [newOrder, ...prev]);
+      
+      if (newPends.length > 0) {
+        setPendingOrders(prev => [...prev, ...newPends]);
+        alert(`Compra executada e Alvos de Risco (OCO) criados com sucesso!`);
+      } else {
+        alert(`Compra de ${quantity}x ${ticker} efetuada com sucesso!`);
+      }
 
-      alert(`Compra de ${quantity}x ${ticker} efetuada com sucesso!`);
-    } catch (err) {
-      console.error("Erro na compra", err);
-      alert("Falha ao salvar transação no banco de dados.");
+    } catch (err: any) {
+      if (err.message !== "Invalid Stop Loss" && err.message !== "Invalid Take Profit") {
+        console.error("Erro na compra", err);
+        alert("Falha ao salvar transação no banco de dados.");
+      }
     }
   };
 
   const sellMarket = async (ticker: string, quantity: number, currentPrice: number, currentTime: string) => {
     if (!user) return alert("Você precisa estar logado.");
+    if (currentPrice <= 0) return alert("Preço do ativo inválido.");
 
     const existingPosition = positions.find(p => p.ticker === ticker);
     if (!existingPosition || existingPosition.quantity < quantity) {
@@ -192,7 +237,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         batch.set(doc(db, 'users', user.uid, 'positions', ticker), {
           ticker,
           quantity: remainingQty,
-          averagePrice: existingPosition.averagePrice // Average price conceptually doesn't change on partial sell
+          averagePrice: existingPosition.averagePrice // Preço médio não muda na venda
         });
       }
 
@@ -223,7 +268,6 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const isFav = favorites.includes(ticker);
     const newFavs = isFav ? favorites.filter(t => t !== ticker) : [...favorites, ticker];
     
-    // Optimistic UI
     setFavorites(newFavs);
 
     if (user) {
@@ -244,7 +288,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         alert(`Saldo insuficiente para agendar esta compra. Custo: R$ ${requiredBalance.toFixed(2)}, Saldo: R$ ${balance.toFixed(2)}`);
         return;
       }
-    } else if (order.type === 'SELL_LIMIT') {
+    } else if (order.type === 'SELL_LIMIT' || order.type === 'SELL_STOP') {
       const existing = positions.find(p => p.ticker === order.ticker);
       if (!existing || existing.quantity < order.quantity) {
         alert(`Você não possui quantidade suficiente em carteira para agendar essa venda.`);
@@ -258,7 +302,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       await setDoc(pendRef, newPend);
       
       setPendingOrders(prev => [...prev, newPend]);
-      alert(`Ordem Pendente ${order.type === 'BUY_LIMIT' ? 'COMPRA' : 'VENDA'} de ${order.quantity}x ${order.ticker} a R$ ${order.targetPrice.toFixed(2)} foi registrada no sistema.`);
+      alert(`Ordem Pendente de ${order.quantity}x ${order.ticker} a R$ ${order.targetPrice.toFixed(2)} foi registrada no sistema.`);
     } catch (e) {
       console.error(e);
       alert("Erro ao armar ordem pendente.");
@@ -275,29 +319,50 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
+  // Motor em Tempo Real que avalia Ordens
   const processPendingOrders = async (ticker: string, livePrice: number, liveTime: string) => {
     if (!user) return;
     
+    // Como a checagem ocorre em background, precisamos pegar o valor MAIS RECENTE do React state
+    // Para simplificar, confiamos que pendingOrders está atualizado pq rodamos num useEffect vigiando ticker.
     const activePends = pendingOrders.filter(po => po.ticker === ticker);
     if (activePends.length === 0) return;
 
     for (const po of activePends) {
-      let shouldExecute = false;
+      let executed = false;
       
       if (po.type === 'BUY_LIMIT' && livePrice <= po.targetPrice) {
         await buyMarket(po.ticker, po.quantity, livePrice, liveTime);
-        shouldExecute = true;
+        executed = true;
         setTimeout(() => alert(`⚡ ORDEM EXECUTADA: Compra Automática Limite atingida! ${po.quantity}x ${po.ticker} por R$ ${livePrice.toFixed(2)}`), 0);
       }
       
       if (po.type === 'SELL_LIMIT' && livePrice >= po.targetPrice) {
+        // Alvo de Lucro (Gain)
         await sellMarket(po.ticker, po.quantity, livePrice, liveTime);
-        shouldExecute = true;
-        setTimeout(() => alert(`⚡ ORDEM EXECUTADA: Venda Automática Limite atingida! ${po.quantity}x ${po.ticker} por R$ ${livePrice.toFixed(2)}`), 0);
+        executed = true;
+        setTimeout(() => alert(`⚡ ORDEM EXECUTADA: Venda de Lucro (Take Profit) atingida! ${po.quantity}x ${po.ticker} por R$ ${livePrice.toFixed(2)}`), 0);
       }
 
-      if (shouldExecute) {
+      if (po.type === 'SELL_STOP' && livePrice <= po.targetPrice) {
+        // Alvo de Risco (Stop Loss)
+        await sellMarket(po.ticker, po.quantity, livePrice, liveTime);
+        executed = true;
+        setTimeout(() => alert(`⚡ Risco Cortado: Stop Loss acionado preventivamente vendendo ${po.quantity}x ${po.ticker} por R$ ${livePrice.toFixed(2)}`), 0);
+      }
+
+      if (executed) {
+        // Encerra a ordem que executou
         await cancelPendingOrder(po.id);
+        
+        // Verifica Gêmea OCO (Cancelamento Mútuo)
+        if (po.ocoId) {
+          const sister = pendingOrders.find(o => o.ocoId === po.ocoId && o.id !== po.id);
+          if (sister) {
+             await cancelPendingOrder(sister.id);
+             setTimeout(() => alert(`Ordem OCO Desarmada: O outro alvo vinculado foi cancelado da fila.`), 0);
+          }
+        }
       }
     }
   };
@@ -307,14 +372,11 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (confirm("Tem certeza que deseja zerar seu simulador e voltar aos R$ 100.000 iniciais? Todo o histórico de ordens também será apagado da nuvem.")) {
       try {
         const batch = writeBatch(db);
-        
         batch.set(doc(db, 'users', user.uid), { balance: INITIAL_BALANCE }, { merge: true });
         
         positions.forEach(p => batch.delete(doc(db, 'users', user.uid, 'positions', p.ticker)));
         pendingOrders.forEach(p => batch.delete(doc(db, 'users', user.uid, 'pendingOrders', p.id)));
         
-        // Note: In a real app we would query all orders and delete them, but for this MVP we might just clear local 
-        // because deleting an entire collection requires looping or admin SDK. We will just loop what's local.
         const ordSnap = await getDocs(collection(db, 'users', user.uid, 'orders'));
         ordSnap.forEach(d => batch.delete(d.ref));
 

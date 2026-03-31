@@ -26,6 +26,8 @@ const MainSimulator = () => {
   const [orderQty, setOrderQty] = useState(100);
   const [orderType, setOrderType] = useState<'MARKET' | 'LIMIT'>('MARKET');
   const [targetPrice, setTargetPrice] = useState<number>(0);
+  const [stopLoss, setStopLoss] = useState<number | ''>('');
+  const [takeProfit, setTakeProfit] = useState<number | ''>('');
 
   // ---- CANDLE INTERVAL (tamanho da vela) ----
   type CandleInterval = { label: string; interval: string; defaultRange: string; supportsTime: boolean };
@@ -482,24 +484,51 @@ const MainSimulator = () => {
 
             {orderType === 'LIMIT' && (
               <>
-                <label style={{ fontSize: '0.9rem', marginTop: '0.5rem', marginBottom: '-0.5rem' }}>Preço Alvo</label>
+                <label style={{ fontSize: '0.9rem', marginTop: '0.5rem', marginBottom: '-0.5rem', display: 'block' }}>Preço Alvo</label>
                 <input 
                   type="number" 
                   value={targetPrice} 
                   onChange={(e) => setTargetPrice(Number(e.target.value))} 
-                  style={{ padding: '0.8rem', borderRadius: '4px', border: '1px solid #444', backgroundColor: 'var(--background)', color: 'var(--text)' }}
+                  style={{ padding: '0.8rem', borderRadius: '4px', border: '1px solid #444', backgroundColor: 'var(--background)', color: 'var(--text)', width: '100%', boxSizing: 'border-box' }}
                   min="0.01"
                   step="0.01"
                 />
               </>
             )}
 
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+            {orderType === 'MARKET' && (
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', marginBottom: '0.5rem' }}>
+                 <div style={{ flex: 1 }}>
+                    <label style={{ fontSize: '0.80rem', color: '#26a69a', display: 'block', marginBottom: '4px' }}>Alvo Gain (Opc.)</label>
+                    <input 
+                      type="number" 
+                      placeholder="R$"
+                      value={takeProfit} 
+                      onChange={(e) => setTakeProfit(e.target.value ? Number(e.target.value) : '')} 
+                      style={{ padding: '0.6rem', borderRadius: '4px', border: '1px solid #444', backgroundColor: 'var(--background)', color: 'var(--text)', width: '100%', boxSizing: 'border-box' }}
+                      min="0.01" step="0.01"
+                    />
+                 </div>
+                 <div style={{ flex: 1 }}>
+                    <label style={{ fontSize: '0.80rem', color: '#ef5350', display: 'block', marginBottom: '4px' }}>Stop Loss (Opc.)</label>
+                    <input 
+                      type="number" 
+                      placeholder="R$"
+                      value={stopLoss} 
+                      onChange={(e) => setStopLoss(e.target.value ? Number(e.target.value) : '')} 
+                      style={{ padding: '0.6rem', borderRadius: '4px', border: '1px solid #444', backgroundColor: 'var(--background)', color: 'var(--text)', width: '100%', boxSizing: 'border-box' }}
+                      min="0.01" step="0.01"
+                    />
+                 </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
               <button 
                 className="buy" 
                 title={orderType === 'MARKET' ? "Comprar AGORA pelo preço atual de mercado." : "Agendar compra se o preço CAIR até o Alvo."}
                 onClick={() => {
-                  if (orderType === 'MARKET') buyMarket(ticker, orderQty, currentPrice, currentTime);
+                  if (orderType === 'MARKET') buyMarket(ticker, orderQty, currentPrice, currentTime, Number(stopLoss) || undefined, Number(takeProfit) || undefined);
                   else addPendingOrder({ ticker, type: 'BUY_LIMIT', quantity: orderQty, targetPrice, time: currentTime });
                 }}>
                 Comprar
@@ -523,8 +552,13 @@ const MainSimulator = () => {
             ) : (
                <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 1rem 0' }}>
                 {pendingOrders.filter(po => po.ticker === ticker).map(po => (
-                  <li key={po.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px dotted #555', fontSize: '0.85rem' }}>
-                    <span>{po.type === 'BUY_LIMIT' ? 'COMPRA' : 'VENDA'} {po.quantity}x a <strong>R$ {po.targetPrice.toFixed(2)}</strong></span>
+                  <li key={po.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px dotted #555', fontSize: '0.85rem', alignItems: 'center' }}>
+                    <span>
+                      {po.type === 'BUY_LIMIT' && '📥 COMPRA LIM'}
+                      {po.type === 'SELL_LIMIT' && '📈 ALVO GAIN'}
+                      {po.type === 'SELL_STOP' && '🛑 STOP LOSS'} 
+                      {' '}{po.quantity}x a <strong>R$ {po.targetPrice.toFixed(2)}</strong>
+                    </span>
                     <button onClick={() => cancelPendingOrder(po.id)} style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', backgroundColor: '#f22', width: 'auto' }}>X</button>
                   </li>
                 ))}
