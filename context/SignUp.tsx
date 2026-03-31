@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, createContext } from 'react';
+import React, { useState, useEffect, useContext, createContext, useRef } from 'react';
 import { GithubAuthProvider, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 
@@ -6,19 +6,40 @@ const authContext = createContext({} as any);
 
 export function AuthProvider({ children }: any) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const popupInProgress = useRef(false);
 
   const signinWithGithub = async () => {
-    const provider = new GithubAuthProvider();
-    const response = await signInWithPopup(auth, provider);
-    setCurrentUser(response.user);
-    return response.user;
+    if (popupInProgress.current) return;
+    popupInProgress.current = true;
+    try {
+      const provider = new GithubAuthProvider();
+      const response = await signInWithPopup(auth, provider);
+      setCurrentUser(response.user);
+      return response.user;
+    } catch (err: any) {
+      if (err.code !== 'auth/cancelled-popup-request' && err.code !== 'auth/popup-closed-by-user') {
+        throw err;
+      }
+    } finally {
+      popupInProgress.current = false;
+    }
   };
 
   const signinWithGoogle = async () => {
-    const provider = new GoogleAuthProvider();
-    const response = await signInWithPopup(auth, provider);
-    setCurrentUser(response.user);
-    return response.user;
+    if (popupInProgress.current) return;
+    popupInProgress.current = true;
+    try {
+      const provider = new GoogleAuthProvider();
+      const response = await signInWithPopup(auth, provider);
+      setCurrentUser(response.user);
+      return response.user;
+    } catch (err: any) {
+      if (err.code !== 'auth/cancelled-popup-request' && err.code !== 'auth/popup-closed-by-user') {
+        throw err;
+      }
+    } finally {
+      popupInProgress.current = false;
+    }
   };
 
   const signinWithEmail = async (email: string, pass: string) => {
