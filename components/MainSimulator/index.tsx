@@ -169,6 +169,19 @@ const MainSimulator = () => {
     fetchHistoricalData();
   }, [ticker, activeInterval, activeRange]);
 
+  useEffect(() => {
+    const handleResize = () => {
+      if (chartRef.current && chartContainerRef.current) {
+        chartRef.current.applyOptions({
+          width: chartContainerRef.current.clientWidth,
+          height: chartContainerRef.current.clientHeight,
+        });
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   useEffect(() => { if (volumeSeriesRef.current) volumeSeriesRef.current.applyOptions({ visible: showVolume }); }, [showVolume]);
   useEffect(() => { if (sma9Ref.current) sma9Ref.current.applyOptions({ visible: showSma9 }); }, [showSma9]);
   useEffect(() => { if (sma21Ref.current) sma21Ref.current.applyOptions({ visible: showSma21 }); }, [showSma21]);

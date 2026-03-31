@@ -6,6 +6,10 @@ export const Container = styled.div`
   padding: 1rem 2rem;
   min-height: calc(100vh - 80px);
   background-color: var(--background);
+
+  @media (max-width: 768px) {
+    padding: 0.8rem 1rem;
+  }
 `;
 
 export const TopBar = styled.div`
@@ -15,17 +19,36 @@ export const TopBar = styled.div`
   margin-bottom: 1rem;
   padding-bottom: 1rem;
   border-bottom: 1px solid #333;
+  gap: 15px;
+
+  @media (max-width: 1024px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
 
   .left-side {
     display: flex;
     align-items: center;
     gap: 15px;
+    flex: 1;
+
+    @media (max-width: 600px) {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+    }
   }
 
   .right-side {
     display: flex;
     align-items: center;
     gap: 15px;
+
+    @media (max-width: 600px) {
+      justify-content: space-between;
+      width: 100%;
+    }
   }
 `;
 
@@ -41,11 +64,14 @@ export const SimulatorGrid = styled.div`
 
   @media (max-width: 1200px) {
     grid-template-columns: 280px 1fr;
+    height: auto;
   }
 
-  @media (max-width: 1024px) {
+  @media (max-width: 768px) {
     grid-template-columns: 1fr;
-    height: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
   }
 `;
 
@@ -60,6 +86,10 @@ export const Panel = styled.div`
 `;
 
 export const ChartContainer = styled(Panel)`
+  @media (max-width: 768px) {
+    order: -1; // Keep chart at top
+  }
+
   .chart-header {
     padding: 0.8rem 1rem;
     border-bottom: 1px solid #333;
@@ -68,10 +98,17 @@ export const ChartContainer = styled(Panel)`
     align-items: center;
     background-color: #1a1a1e;
 
+    @media (max-width: 900px) {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
     .asset-info {
       display: flex;
       align-items: center;
       gap: 1rem;
+      flex-wrap: wrap;
     }
 
     .asset-price {
@@ -85,6 +122,12 @@ export const ChartContainer = styled(Panel)`
       gap: 1.5rem;
       font-size: 0.8rem;
       color: #aaa;
+      
+      @media (max-width: 600px) {
+        gap: 10px;
+        flex-wrap: wrap;
+        width: 100%;
+      }
       
       .stat-item {
         display: flex;
@@ -142,7 +185,11 @@ export const ChartContainer = styled(Panel)`
   .chart-area {
     flex: 1;
     width: 100%;
-    min-height: 400px;
+    min-height: 450px;
+
+    @media (max-width: 768px) {
+      min-height: 350px;
+    }
   }
 `;
 
@@ -183,6 +230,11 @@ export const BoletaContainer = styled(Panel)`
     gap: 0.8rem;
     margin-top: 1.5rem;
 
+    @media (max-width: 768px) {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+
     button {
       padding: 1rem;
       font-weight: bold;
@@ -191,6 +243,10 @@ export const BoletaContainer = styled(Panel)`
       border-radius: 4px;
       cursor: pointer;
       transition: opacity 0.2s;
+
+      @media (max-width: 768px) {
+        padding: 1.2rem 1rem;
+      }
 
       &:hover:not(:disabled) {
         opacity: 0.9;
