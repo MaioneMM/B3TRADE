@@ -591,8 +591,6 @@ const MainSimulator = () => {
                 })}
               </ul>
             )}
-            
-            <button onClick={resetPortfolio} style={{ backgroundColor: 'transparent', color: '#ff9800', border: '1px solid #ff9800', marginTop: '1rem' }}>Zerar Simulador</button>
           </div>
         </OrderPanelContainer>
       </SimulatorGrid>

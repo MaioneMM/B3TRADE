@@ -154,7 +154,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       
       // 3. Registrar Histórico da Ordem
       const orderRef = doc(collection(db, 'users', user.uid, 'orders'));
-      const newOrder: Order = { ticker, type: 'BUY', quantity, price: currentPrice, time: currentTime };
+      const executionTime = new Date().toISOString(); 
+      const newOrder: Order = { ticker, type: 'BUY', quantity, price: currentPrice, time: executionTime };
       batch.set(orderRef, newOrder);
 
       // 4. Lógica OCO (Alvos Simultâneos)
@@ -242,7 +243,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
 
       const orderRef = doc(collection(db, 'users', user.uid, 'orders'));
-      const newOrder: Order = { ticker, type: 'SELL', quantity, price: currentPrice, time: currentTime };
+      const executionTime = new Date().toISOString();
+      const newOrder: Order = { ticker, type: 'SELL', quantity, price: currentPrice, time: executionTime };
       batch.set(orderRef, newOrder);
 
       await batch.commit();

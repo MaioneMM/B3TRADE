@@ -7,7 +7,7 @@ import { DashboardContainer, SummaryGrid, MainContentGrid, PieContainer, TableWr
 const COLORS = ['#26a69a', '#ef5350', '#29b6f6', '#ab47bc', '#ffa726', '#8d6e63', '#78909c'];
 
 const PortfolioDashboard = () => {
-  const { balance, positions, orders, isLoaded } = usePortfolio();
+  const { balance, positions, orders, isLoaded, resetPortfolio } = usePortfolio();
   
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
   const [loadingPrices, setLoadingPrices] = useState(false);
@@ -93,8 +93,15 @@ const PortfolioDashboard = () => {
 
   return (
     <DashboardContainer>
-      <h1>Minha Carteira</h1>
-
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+        <h1 style={{ margin: 0 }}>Minha Carteira</h1>
+        <button 
+          onClick={resetPortfolio} 
+          style={{ backgroundColor: 'transparent', color: '#ff9800', border: '1px solid #ff9800', padding: '0.4rem 0.8rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem' }}
+        >
+          Resetar Valores
+        </button>
+      </div>
       <SummaryGrid>
         <div className="card">
           <h3>Patrimônio Total</h3>
@@ -199,7 +206,19 @@ const PortfolioDashboard = () => {
               )}
               {orders.map((o, idx) => {
                 const vol = o.quantity * o.price;
-                const dataStr = new Date(o.time).toLocaleString('pt-BR');
+                
+                // Tratar a data corretamente: se for timestamp em segundos do gráfico, converte pra ms.
+                let dataO = new Date(o.time);
+                const rawNumeric = typeof o.time === 'number' ? o.time : Number(o.time);
+                if (!isNaN(rawNumeric) && rawNumeric < 10000000000 && rawNumeric > 0) {
+                   dataO = new Date(rawNumeric * 1000);
+                } else if (o.time && String(o.time).includes('T')) {
+                   dataO = new Date(o.time);
+                } else if (isNaN(dataO.getTime())) {
+                   dataO = new Date(); // fallback
+                }
+
+                const dataStr = dataO.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
                 return (
                   <tr key={idx}>
                     <td>{dataStr}</td>
