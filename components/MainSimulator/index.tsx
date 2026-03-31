@@ -23,7 +23,7 @@ const MainSimulator = () => {
   const [loading, setLoading] = useState(false);
   const [currentPrice, setCurrentPrice] = useState(0);
   const [currentTime, setCurrentTime] = useState<string>('');
-  const [orderQty, setOrderQty] = useState(100);
+  const [orderQty, setOrderQty] = useState<number | ''>(100);
   const [orderType, setOrderType] = useState<'MARKET' | 'LIMIT'>('MARKET');
   const [targetPrice, setTargetPrice] = useState<number>(0);
   const [stopLoss, setStopLoss] = useState<number | ''>('');
@@ -484,7 +484,7 @@ const MainSimulator = () => {
             <input 
               type="number" 
               value={orderQty} 
-              onChange={(e) => setOrderQty(Number(e.target.value))} 
+              onChange={(e) => setOrderQty(e.target.value === '' ? '' : Number(e.target.value))} 
               style={{ padding: '0.8rem', borderRadius: '4px', border: '1px solid #444', backgroundColor: 'var(--background)', color: 'var(--text)' }}
               min="1"
               step="1"
@@ -536,8 +536,8 @@ const MainSimulator = () => {
                 className="buy" 
                 title={orderType === 'MARKET' ? "Comprar AGORA pelo preço atual de mercado." : "Agendar compra se o preço CAIR até o Alvo."}
                 onClick={() => {
-                  if (orderType === 'MARKET') buyMarket(ticker, orderQty, currentPrice, currentTime, Number(stopLoss) || undefined, Number(takeProfit) || undefined);
-                  else addPendingOrder({ ticker, type: 'BUY_LIMIT', quantity: orderQty, targetPrice, time: currentTime });
+                  if (orderType === 'MARKET') buyMarket(ticker, Number(orderQty), currentPrice, currentTime, Number(stopLoss) || undefined, Number(takeProfit) || undefined);
+                  else addPendingOrder({ ticker, type: 'BUY_LIMIT', quantity: Number(orderQty), targetPrice, time: currentTime });
                 }}>
                 Comprar
               </button>
@@ -545,8 +545,8 @@ const MainSimulator = () => {
                 className="sell" 
                 title={orderType === 'MARKET' ? "Vender AGORA a quantidade indicada pelo preço de mercado." : "Agendar venda se o preço SUBIR/CAIR até o Alvo."}
                 onClick={() => {
-                  if (orderType === 'MARKET') sellMarket(ticker, orderQty, currentPrice, currentTime);
-                  else addPendingOrder({ ticker, type: 'SELL_LIMIT', quantity: orderQty, targetPrice, time: currentTime });
+                  if (orderType === 'MARKET') sellMarket(ticker, Number(orderQty), currentPrice, currentTime);
+                  else addPendingOrder({ ticker, type: 'SELL_LIMIT', quantity: Number(orderQty), targetPrice, time: currentTime });
                 }}>
                 Vender
               </button>
