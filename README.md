@@ -1,40 +1,52 @@
-# B3TRADE
+# Simulador B3Trade & Home Broker
 
-Na B3TRADE, você tem acesso à cotação em tempo real das ações da Bovespa e criptomoedas. Você tem acesso à uma plataforma que mostra todos os dados necessários para você acompanhar o mercado de ações brasileiro ou cripto. Ajudamos a democratizar o acesso aos dados do mercado financeiro brasileiro.
+O **B3Trade** é um ambiente completo de simulação financeira projetado para entregar uma experiência de *"Home Broker"* e monitoramento de mercado com dados quase em tempo real (dados com delay de terceiros, mas arquitetura de alta frequência local).
 
-Funciona com Ações comuns com final 3 e 4. Também funciona com Fundos de Investimento com final 11.
+![Exemplo de Caching Engine](docs/images/simulator_caching.png)
 
-Também suportamos criptomoedas e conversão de moedas.
+## 🌟 Principais Features (Recentemente Implementadas)
 
-## Recursos
+### 1. Dashboard de Commodities Globais
+Os usuários podem monitorar os preços de 15 commodities mundiais cruciais diretamente na plataforma (na aba "Commodities").
+*   📊 **Feed do Yahoo Finance:** Desenvolvemos a rota `/api/commodity` que consome dados diretos dos contratos futuros.
+*   🏷 **Categorias Inteligentes:** Os ativos foram separados em Energia (ex: Petróleo, Gás), Metais (ex: Ouro, Ouro) e Agrícolas (ex: Soja, Milho de Chicago).
+*   💵 Faturados em **USD** para corresponder ao mercado internacional.
 
-### Acesso em tempo real
-Providenciamos dados do mercado de ação brasileiro em tempo real e totalmente grátis.
+### 2. In-Memory Server Cache (Proteção Anti Rate-Limit)
+Como o simulador e o dashboard precisam se atualizar muito rápido, implementamos uma barreira arquitetural de cache no backend Node.js (`/api/quote` e `/api/commodity`).
+*   **Velocidade e Resiliência:** A API salva o dado na memória RAM do servidor. Toda visita na tela bate na memória a cada segundo (0ms de latência). Por trás, a API só se comunica com o Yahoo a cada 30 segundos (TTL).
 
-### Suportamos Criptomoedas
-Você pode buscar informações de qualquer criptomoeda em qualquer moeda.
+### 3. Avanços na Boleta Rápida (Simulador)
+A área de negociação ficou mais robusta, esteticamente agradável e segura contra operações erradas.
 
-### Suportamos Moedas
-Você pode buscar informações e converter várias moedas.
+#### Logos na Watchlist
+Os botões de "Sua Watchlist" carregam os SVGs nativos das companhias, entregando uma identidade visual visual premium à sessão de trading.
 
-## Feito com (Stack Moderno)
+#### Relógio Sincronizado com a B3 🕒
+O simulador entende o horário de funcionamento dos pregões brasileiros.
 
-- [x] Node.js
-- [x] Next.js
-- [x] Typescript
-- [x] React
-- [x] Styled-Components
-- [x] Firebase Database/Auth
-- [x] Lightweight Charts
+![Horário de Mercado](docs/images/market_clock.png)
 
-## Contribuições
+*   🟢 **ABERTO** (Entre 10h e 17h55)
+*   🟠 **FECHANDO** (Entre 17h55 e 17h59)
+*   🔴 **FECHADO** (Finais de Semana ou Noite). As operações sofrem _lock_ completo nos botões de Comprar e Vender.
 
-Sinta-se livre para contribuir ou reportar algum erro ou sugestão criando novas "Issues" ou "Pull Requests".
+#### Modal de Ajuda Interativo
+Ao abrir a interrogação da Boleta de Ordens, um modal explica o funcionamento da plataforma para traders novatos.
 
-## Exoneração de Responsabilidade
+![Modal de Ajuda](docs/images/help_modal.png)
 
-Essa é uma aplicação para fins informativos. Não garantimos a precisão dos dados, uma vez que devem ser utilizados apenas para efeitos informativos. Confirmem todos os dados antes de efetuar qualquer ação que possa ser afetada por estes valores.
+---
 
-## Licença
+## 🛠 Como executar o projeto localmente
 
-Distribuído sob a licença MIT. Consulte o arquivo `LICENSE` para mais informações.
+```bash
+# 1. Instale as dependências
+npm install
+
+# 2. Rode o servidor de dev
+npm run dev
+```
+
+Abra [http://localhost:3000](http://localhost:3000) com o seu browser para acessar a plataforma.
+O simulador de trading estará na rota `/simulator`. As commodities na rota `/commodities`.
