@@ -46,6 +46,17 @@ interface PortfolioContextProps {
 
 const PortfolioContext = createContext<PortfolioContextProps | undefined>(undefined);
 
+export const getRankingIds = () => {
+  const d = new Date();
+  const startDate = new Date(d.getFullYear(), 0, 1);
+  const days = Math.floor((d.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000));
+  const weekNumber = Math.ceil((days + startDate.getDay() + 1) / 7);
+  const weekId = `${d.getFullYear()}-W${weekNumber.toString().padStart(2, '0')}`;
+  const monthId = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+  const yearId = `${d.getFullYear()}`;
+  return { weekId, monthId, yearId };
+};
+
 export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const INITIAL_BALANCE = 100000;
   
@@ -63,7 +74,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
-        await loadUserData(u.uid);
+        await loadUserData(u);
       } else {
         setBalance(INITIAL_BALANCE);
         setPositions([]);
@@ -76,32 +87,39 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return () => unsub();
   }, []);
 
-  const loadUserData = async (uid: string) => {
+  const loadUserData = async (u: User) => {
     setIsLoaded(false);
     try {
-      const userRef = doc(db, 'users', uid);
+      const userRef = doc(db, 'users', u.uid);
       const userSnap = await getDoc(userRef);
       
+      const updateData: any = {
+         displayName: u.displayName || 'Trader Anônimo',
+         photoURL: u.photoURL || ''
+      };
+
       if (userSnap.exists()) {
         const data = userSnap.data();
         setBalance(data.balance ?? INITIAL_BALANCE);
         setFavorites(data.favorites ?? ['PETR4', 'VALE3', 'ITUB4']);
+        await setDoc(userRef, updateData, { merge: true });
       } else {
-        await setDoc(userRef, { balance: INITIAL_BALANCE, favorites: ['PETR4', 'VALE3', 'ITUB4'] }, { merge: true });
+        const initialData = { balance: INITIAL_BALANCE, favorites: ['PETR4', 'VALE3', 'ITUB4'], ...updateData };
+        await setDoc(userRef, initialData, { merge: true });
         setBalance(INITIAL_BALANCE);
       }
 
-      const posSnap = await getDocs(collection(db, 'users', uid, 'positions'));
+      const posSnap = await getDocs(collection(db, 'users', u.uid, 'positions'));
       const lsPos: Position[] = [];
       posSnap.forEach(d => lsPos.push(d.data() as Position));
       setPositions(lsPos);
 
-      const pendSnap = await getDocs(collection(db, 'users', uid, 'pendingOrders'));
+      const pendSnap = await getDocs(collection(db, 'users', u.uid, 'pendingOrders'));
       const lsPend: PendingOrder[] = [];
       pendSnap.forEach(d => lsPend.push({ id: d.id, ...d.data() } as PendingOrder));
       setPendingOrders(lsPend);
 
-      const ordSnap = await getDocs(collection(db, 'users', uid, 'orders'));
+      const ordSnap = await getDocs(collection(db, 'users', u.uid, 'orders'));
       const lsOrd: Order[] = [];
       ordSnap.forEach(d => lsOrd.push(d.data() as Order));
       lsOrd.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
@@ -233,10 +251,26 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const totalRevenue = quantity * currentPrice;
     const newBalance = balance + totalRevenue;
     const remainingQty = existingPosition.quantity - quantity;
+    const tradeProfit = (currentPrice - existingPosition.averagePrice) * quantity;
 
     try {
+      const userRef = doc(db, 'users', user.uid);
+      const userSnap = await getDoc(userRef);
+      const userData = userSnap.data() || {};
+      const rankings = userData.rankings || {};
+      const { weekId, monthId, yearId } = getRankingIds();
+
+      const newRankings = {
+        weekId,
+        weeklyPnl: rankings.weekId === weekId ? (rankings.weeklyPnl || 0) + tradeProfit : tradeProfit,
+        monthId,
+        monthlyPnl: rankings.monthId === monthId ? (rankings.monthlyPnl || 0) + tradeProfit : tradeProfit,
+        yearId,
+        yearlyPnl: rankings.yearId === yearId ? (rankings.yearlyPnl || 0) + tradeProfit : tradeProfit,
+      };
+
       const batch = writeBatch(db);
-      batch.set(doc(db, 'users', user.uid), { balance: newBalance }, { merge: true });
+      batch.set(userRef, { balance: newBalance, rankings: newRankings }, { merge: true });
 
       if (remainingQty <= 0) {
         batch.delete(doc(db, 'users', user.uid, 'positions', ticker));
@@ -377,8 +411,12 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // será feita na própria UI antes de invocar este botão!
     
     try {
+      const { weekId, monthId, yearId } = getRankingIds();
+      // O reset zera completamente a contagem de sucesso no ranking (Auto-punição por falência)
+      const emptyRankings = { weekId, weeklyPnl: 0, monthId, monthlyPnl: 0, yearId, yearlyPnl: 0 };
+
       const batch = writeBatch(db);
-      batch.set(doc(db, 'users', user.uid), { balance: INITIAL_BALANCE }, { merge: true });
+      batch.set(doc(db, 'users', user.uid), { balance: INITIAL_BALANCE, rankings: emptyRankings }, { merge: true });
       
       positions.forEach(p => batch.delete(doc(db, 'users', user.uid, 'positions', p.ticker)));
       pendingOrders.forEach(p => batch.delete(doc(db, 'users', user.uid, 'pendingOrders', p.id)));
