@@ -11,6 +11,9 @@ const PortfolioDashboard = () => {
   
   const [livePrices, setLivePrices] = useState<Record<string, number>>({});
   const [loadingPrices, setLoadingPrices] = useState(false);
+  
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
 
   // Fetch live prices for all positions on mount
   useEffect(() => {
@@ -93,11 +96,65 @@ const PortfolioDashboard = () => {
 
   return (
     <DashboardContainer>
+      {showResetModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.85)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 99999, animation: 'fadeIn 0.2s ease-out'
+        }}>
+          <div style={{
+            background: '#1e1e24', padding: '2rem', borderRadius: '8px',
+            border: '1px solid #ef5350', maxWidth: '450px', width: '90%',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.8)'
+          }}>
+            <h2 style={{ color: '#ef5350', marginTop: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+              ⚠️ Ação Irreversível
+            </h2>
+            <p style={{ fontSize: '0.90rem', color: '#ccc', lineHeight: 1.5 }}>
+              Você está prestes a apagar todo o seu histórico de simulação. Todas as suas posições serão fechadas e seu poder de compra retornará aos <strong>R$ 100.000,00</strong> iniciais.
+            </p>
+            <div style={{ margin: '1.5rem 0', background: '#0a0a0c', padding: '1rem', borderRadius: '6px', border: '1px solid #333' }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', fontSize: '0.85rem', color: '#aaa', lineHeight: 1.4 }}>
+                <input 
+                  type="checkbox" 
+                  checked={confirmReset} 
+                  onChange={(e) => setConfirmReset(e.target.checked)} 
+                  style={{ width: '18px', height: '18px', accentColor: '#ef5350', cursor: 'pointer', flexShrink: 0, marginTop: '2px' }}
+                />
+                Sim, eu entendo que perderei todos os meus ativos e meu histórico de performance será expurgado da nuvem.
+              </label>
+            </div>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+              <button 
+                onClick={() => { setShowResetModal(false); setConfirmReset(false); }}
+                style={{ padding: '0.6rem 1.2rem', background: 'transparent', border: '1px solid #555', color: '#ccc', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                Cancelar
+              </button>
+              <button 
+                onClick={() => { resetPortfolio(); setShowResetModal(false); setConfirmReset(false); }}
+                disabled={!confirmReset}
+                style={{ 
+                  padding: '0.6rem 1.5rem', 
+                  background: confirmReset ? '#ef5350' : '#333', 
+                  color: confirmReset ? '#fff' : '#666',
+                  border: '1px solid', borderColor: confirmReset ? '#ef5350' : '#444', 
+                  borderRadius: '4px', 
+                  cursor: confirmReset ? 'pointer' : 'not-allowed',
+                  fontWeight: 'bold', transition: '0.2s'
+                }}>
+                Zerar Simulador
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <h1 style={{ margin: 0 }}>Minha Carteira</h1>
         <button 
-          onClick={resetPortfolio} 
-          style={{ backgroundColor: 'transparent', color: '#ff9800', border: '1px solid #ff9800', padding: '0.4rem 0.8rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem' }}
+          onClick={() => setShowResetModal(true)} 
+          style={{ backgroundColor: 'transparent', color: '#ef5350', border: '1px solid #ef5350', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 'bold' }}
         >
           Resetar Valores
         </button>

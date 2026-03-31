@@ -3,6 +3,7 @@ import { AppProps } from 'next/app';
 import { useRouter } from 'next/router';
 import * as gtag from '../utils/gtag';
 import { AuthProvider } from '../context/SignUp';
+import { ToastProvider } from '../context/ToastContext';
 
 const App = ({ Component, pageProps }: AppProps) => {
   const router = useRouter();
@@ -19,7 +20,9 @@ const App = ({ Component, pageProps }: AppProps) => {
 
   return (
     <AuthProvider>
-      <Component {...pageProps} />
+      <ToastProvider>
+        <Component {...pageProps} />
+      </ToastProvider>
     </AuthProvider>
   );
 };

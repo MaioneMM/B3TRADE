@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db, auth } from '../lib/firebase';
 import { doc, getDoc, setDoc, collection, getDocs, writeBatch, deleteDoc } from 'firebase/firestore';
 import { onAuthStateChanged, User } from 'firebase/auth';
+import { useToast } from './ToastContext';
 
 export interface Position {
   ticker: string;
@@ -55,6 +56,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>([]);
   const [favorites, setFavorites] = useState<string[]>(['PETR4', 'VALE3', 'ITUB4']);
   const [isLoaded, setIsLoaded] = useState(false);
+
+  const { addToast } = useToast();
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
@@ -115,17 +118,16 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     console.log(`[buyMarket] Iniciando compra de ${quantity} ${ticker} a R$${currentPrice}`);
     if (!user) {
       console.warn("[buyMarket] Usuário não está logado na sessão do React!");
-      return alert("Você precisa estar logado para simular.");
+      return addToast("Você precisa estar logado para simular.", "error");
     }
     
     if (currentPrice <= 0) {
-      return alert("Preço do ativo inválido. Aguarde a cotação carregar.");
+      return addToast("Preço do ativo inválido. Aguarde a cotação carregar.", "error");
     }
 
     const totalCost = quantity * currentPrice;
     if (balance < totalCost) {
-      alert(`Saldo insuficiente! Custo: R$ ${totalCost.toFixed(2)}, Saldo: R$ ${balance.toFixed(2)}`);
-      return;
+      return addToast(`Saldo insuficiente! Custo: R$ ${totalCost.toFixed(2)}, Saldo: R$ ${balance.toFixed(2)}`, "error");
     }
 
     const newBalance = balance - totalCost;
@@ -165,22 +167,22 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         
         if (stopLoss && stopLoss > 0) {
           if (stopLoss >= currentPrice) {
-             alert("O Stop Loss deve ser MENOR que o preço atual de compra.");
+             addToast("O Stop Loss deve ser MENOR que o preço atual de compra.", "error");
              throw new Error("Invalid Stop Loss");
           }
           const pRef = doc(collection(db, 'users', user.uid, 'pendingOrders'));
-          const pObj: PendingOrder = { id: pRef.id, ticker, type: 'SELL_STOP', quantity, targetPrice: stopLoss, time: currentTime, ocoId };
+          const pObj: PendingOrder = { id: pRef.id, ticker, type: 'SELL_STOP', quantity, targetPrice: stopLoss, time: executionTime, ocoId };
           batch.set(pRef, pObj);
           newPends.push(pObj);
         }
         
         if (takeProfit && takeProfit > 0) {
           if (takeProfit <= currentPrice) {
-             alert("O Alvo de Lucro (Gain) deve ser MAIOR que o preço atual de compra.");
+             addToast("O Alvo de Lucro (Gain) deve ser MAIOR que o preço atual de compra.", "error");
              throw new Error("Invalid Take Profit");
           }
           const pRef = doc(collection(db, 'users', user.uid, 'pendingOrders'));
-          const pObj: PendingOrder = { id: pRef.id, ticker, type: 'SELL_LIMIT', quantity, targetPrice: takeProfit, time: currentTime, ocoId };
+          const pObj: PendingOrder = { id: pRef.id, ticker, type: 'SELL_LIMIT', quantity, targetPrice: takeProfit, time: executionTime, ocoId };
           batch.set(pRef, pObj);
           newPends.push(pObj);
         }
@@ -201,27 +203,26 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       
       if (newPends.length > 0) {
         setPendingOrders(prev => [...prev, ...newPends]);
-        alert(`Compra executada e Alvos de Risco (OCO) criados com sucesso!`);
+        addToast(`Compra executada e Alvos de Risco (OCO) criados com sucesso!`, "success");
       } else {
-        alert(`Compra de ${quantity}x ${ticker} efetuada com sucesso!`);
+        addToast(`Compra de ${quantity}x ${ticker} efetuada com sucesso!`, "success");
       }
 
     } catch (err: any) {
       if (err.message !== "Invalid Stop Loss" && err.message !== "Invalid Take Profit") {
         console.error("Erro na compra", err);
-        alert("Falha ao salvar transação no banco de dados.");
+        addToast("Falha ao salvar transação no banco de dados.", "error");
       }
     }
   };
 
   const sellMarket = async (ticker: string, quantity: number, currentPrice: number, currentTime: string) => {
-    if (!user) return alert("Você precisa estar logado.");
-    if (currentPrice <= 0) return alert("Preço do ativo inválido.");
+    if (!user) return addToast("Você precisa estar logado.", "error");
+    if (currentPrice <= 0) return addToast("Preço do ativo inválido.", "error");
 
     const existingPosition = positions.find(p => p.ticker === ticker);
     if (!existingPosition || existingPosition.quantity < quantity) {
-      alert(`Você não possui quantidade suficiente de ${ticker} para vender.`);
-      return;
+      return addToast(`Você não possui quantidade suficiente de ${ticker} para vender.`, "error");
     }
 
     const totalRevenue = quantity * currentPrice;
@@ -238,7 +239,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         batch.set(doc(db, 'users', user.uid, 'positions', ticker), {
           ticker,
           quantity: remainingQty,
-          averagePrice: existingPosition.averagePrice // Preço médio não muda na venda
+          averagePrice: existingPosition.averagePrice
         });
       }
 
@@ -259,10 +260,10 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       });
       setOrders(prev => [newOrder, ...prev]);
 
-      alert(`Venda de ${quantity}x ${ticker} efetuada com sucesso!`);
+      addToast(`Venda de ${quantity}x ${ticker} efetuada com sucesso!`, "success");
     } catch (err) {
       console.error("Erro na venda", err);
-      alert("Falha ao salvar transação no banco.");
+      addToast("Falha ao salvar transação no banco.", "error");
     }
   };
 
@@ -275,6 +276,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (user) {
       try {
         await setDoc(doc(db, 'users', user.uid), { favorites: newFavs }, { merge: true });
+        addToast(isFav ? `${ticker} removido dos favoritos.` : `${ticker} adicionado aos favoritos.`, "info");
       } catch (err) {
         console.error("Falha ao salvar favoritos", err);
       }
@@ -282,19 +284,17 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   const addPendingOrder = async (order: Omit<PendingOrder, 'id'>) => {
-    if (!user) return alert("Logue-se primeiro.");
+    if (!user) return addToast("Logue-se primeiro.", "error");
 
     if (order.type === 'BUY_LIMIT') {
       const requiredBalance = order.quantity * order.targetPrice;
       if (balance < requiredBalance) {
-        alert(`Saldo insuficiente para agendar esta compra. Custo: R$ ${requiredBalance.toFixed(2)}, Saldo: R$ ${balance.toFixed(2)}`);
-        return;
+        return addToast(`Saldo insuficiente! Custo: R$ ${requiredBalance.toFixed(2)}, Caixa Livre: R$ ${balance.toFixed(2)}`, "error");
       }
     } else if (order.type === 'SELL_LIMIT' || order.type === 'SELL_STOP') {
       const existing = positions.find(p => p.ticker === order.ticker);
       if (!existing || existing.quantity < order.quantity) {
-        alert(`Você não possui quantidade suficiente em carteira para agendar essa venda.`);
-        return;
+        return addToast(`Você não possui quantidade suficiente em carteira para agendar essa operação.`, "error");
       }
     }
     
@@ -304,29 +304,27 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       await setDoc(pendRef, newPend);
       
       setPendingOrders(prev => [...prev, newPend]);
-      alert(`Ordem Pendente de ${order.quantity}x ${order.ticker} a R$ ${order.targetPrice.toFixed(2)} foi registrada no sistema.`);
+      addToast(`Ordem de ${order.quantity}x ${order.ticker} a R$ ${order.targetPrice.toFixed(2)} agendada com sucesso.`, "success");
     } catch (e) {
       console.error(e);
-      alert("Erro ao armar ordem pendente.");
+      addToast("Erro ao armar ordem pendente.", "error");
     }
   };
 
-  const cancelPendingOrder = async (id: string) => {
+  const cancelPendingOrder = async (id: string, silent = false) => {
     if (!user) return;
     try {
       await deleteDoc(doc(db, 'users', user.uid, 'pendingOrders', id));
       setPendingOrders(prev => prev.filter(po => po.id !== id));
+      if (!silent) addToast("Ordem cancelada.", "info");
     } catch (e) {
       console.error(e);
     }
   };
 
-  // Motor em Tempo Real que avalia Ordens
   const processPendingOrders = async (ticker: string, livePrice: number, liveTime: string) => {
     if (!user) return;
     
-    // Como a checagem ocorre em background, precisamos pegar o valor MAIS RECENTE do React state
-    // Para simplificar, confiamos que pendingOrders está atualizado pq rodamos num useEffect vigiando ticker.
     const activePends = pendingOrders.filter(po => po.ticker === ticker);
     if (activePends.length === 0) return;
 
@@ -336,33 +334,29 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (po.type === 'BUY_LIMIT' && livePrice <= po.targetPrice) {
         await buyMarket(po.ticker, po.quantity, livePrice, liveTime);
         executed = true;
-        setTimeout(() => alert(`⚡ ORDEM EXECUTADA: Compra Automática Limite atingida! ${po.quantity}x ${po.ticker} por R$ ${livePrice.toFixed(2)}`), 0);
+        setTimeout(() => addToast(`⚡ Compra Automática Limite atingida! ${po.quantity}x ${po.ticker} por R$ ${livePrice.toFixed(2)}`, "success"), 0);
       }
       
       if (po.type === 'SELL_LIMIT' && livePrice >= po.targetPrice) {
-        // Alvo de Lucro (Gain)
         await sellMarket(po.ticker, po.quantity, livePrice, liveTime);
         executed = true;
-        setTimeout(() => alert(`⚡ ORDEM EXECUTADA: Venda de Lucro (Take Profit) atingida! ${po.quantity}x ${po.ticker} por R$ ${livePrice.toFixed(2)}`), 0);
+        setTimeout(() => addToast(`⚡ Lucro (Take Profit) atingido! ${po.quantity}x ${po.ticker} vendidos por R$ ${livePrice.toFixed(2)}`, "success"), 0);
       }
 
       if (po.type === 'SELL_STOP' && livePrice <= po.targetPrice) {
-        // Alvo de Risco (Stop Loss)
         await sellMarket(po.ticker, po.quantity, livePrice, liveTime);
         executed = true;
-        setTimeout(() => alert(`⚡ Risco Cortado: Stop Loss acionado preventivamente vendendo ${po.quantity}x ${po.ticker} por R$ ${livePrice.toFixed(2)}`), 0);
+        setTimeout(() => addToast(`⚡ Risco Cortado: Stop Loss acionado vendendo ${po.quantity}x ${po.ticker} por R$ ${livePrice.toFixed(2)}`, "error"), 0);
       }
 
       if (executed) {
-        // Encerra a ordem que executou
-        await cancelPendingOrder(po.id);
+        await cancelPendingOrder(po.id, true);
         
-        // Verifica Gêmea OCO (Cancelamento Mútuo)
         if (po.ocoId) {
           const sister = pendingOrders.find(o => o.ocoId === po.ocoId && o.id !== po.id);
           if (sister) {
-             await cancelPendingOrder(sister.id);
-             setTimeout(() => alert(`Ordem OCO Desarmada: O outro alvo vinculado foi cancelado da fila.`), 0);
+             await cancelPendingOrder(sister.id, true);
+             setTimeout(() => addToast(`Ordem OCO: O alvo oposto de ${sister.ticker} foi cancelado.`, "info"), 0);
           }
         }
       }
@@ -370,29 +364,30 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   const resetPortfolio = async () => {
-    if (!user) return alert("Logue-se primeiro.");
-    if (confirm("Tem certeza que deseja zerar seu simulador e voltar aos R$ 100.000 iniciais? Todo o histórico de ordens também será apagado da nuvem.")) {
-      try {
-        const batch = writeBatch(db);
-        batch.set(doc(db, 'users', user.uid), { balance: INITIAL_BALANCE }, { merge: true });
-        
-        positions.forEach(p => batch.delete(doc(db, 'users', user.uid, 'positions', p.ticker)));
-        pendingOrders.forEach(p => batch.delete(doc(db, 'users', user.uid, 'pendingOrders', p.id)));
-        
-        const ordSnap = await getDocs(collection(db, 'users', user.uid, 'orders'));
-        ordSnap.forEach(d => batch.delete(d.ref));
+    if (!user) return addToast("Logue-se primeiro.", "error");
+    // Aviso crítico: a exclusão agora é silenciosa aqui porque a confirmação (Checkbox + Modal) 
+    // será feita na própria UI antes de invocar este botão!
+    
+    try {
+      const batch = writeBatch(db);
+      batch.set(doc(db, 'users', user.uid), { balance: INITIAL_BALANCE }, { merge: true });
+      
+      positions.forEach(p => batch.delete(doc(db, 'users', user.uid, 'positions', p.ticker)));
+      pendingOrders.forEach(p => batch.delete(doc(db, 'users', user.uid, 'pendingOrders', p.id)));
+      
+      const ordSnap = await getDocs(collection(db, 'users', user.uid, 'orders'));
+      ordSnap.forEach(d => batch.delete(d.ref));
 
-        await batch.commit();
+      await batch.commit();
 
-        setBalance(INITIAL_BALANCE);
-        setPositions([]);
-        setOrders([]);
-        setPendingOrders([]);
-        alert("Simulador completamente resetado na nuvem.");
-      } catch (e) {
-        console.error(e);
-        alert("Falha ao resetar na nuvem.");
-      }
+      setBalance(INITIAL_BALANCE);
+      setPositions([]);
+      setOrders([]);
+      setPendingOrders([]);
+      addToast("Seus dados foram purgados. Simulador resetado aos R$ 100.000 iniciais.", "success");
+    } catch (e) {
+      console.error(e);
+      addToast("Falha ao resetar na nuvem.", "error");
     }
   };
 
