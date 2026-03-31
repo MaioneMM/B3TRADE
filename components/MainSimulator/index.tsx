@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { createChart, ColorType, IChartApi, ISeriesApi } from 'lightweight-charts';
+import { createChart, ColorType, IChartApi, ISeriesApi, CrosshairMode } from 'lightweight-charts';
 import { Container, TopBar, SimulatorGrid, ChartContainer, BoletaContainer, ListContainer } from './styles';
 import axios from 'axios';
 import { usePortfolio } from '../../context/PortfolioContext';
@@ -101,7 +101,16 @@ const MainSimulator = () => {
       width: chartContainerRef.current.clientWidth,
       height: chartContainerRef.current.clientHeight,
       grid: { vertLines: { color: isDark ? '#2B2B43' : '#e1e3eb' }, horzLines: { color: isDark ? '#2B2B43' : '#e1e3eb' } },
-      timeScale: { timeVisible: true, secondsVisible: false },
+      timeScale: { 
+        timeVisible: true, 
+        secondsVisible: false, 
+        rightOffset: 15,
+        barSpacing: 10,
+        shiftVisibleRangeOnNewBar: true,
+      },
+      crosshair: {
+        mode: CrosshairMode.Normal,
+      }
     });
     
     chartRef.current = chart;
