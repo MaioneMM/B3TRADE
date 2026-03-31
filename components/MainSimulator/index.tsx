@@ -205,12 +205,13 @@ const MainSimulator = () => {
         formattedData.sort((a: any, b: any) => a.time - b.time);
         const uniqueData = formattedData.filter((v: any, i: any, a: any) => a.findIndex((t: any) => t.time === v.time) === i);
 
-        // Update latest price
-        if (uniqueData.length > 0) {
-          const lastOne = uniqueData[uniqueData.length - 1];
-          setCurrentPrice(lastOne.close);
-          setCurrentTime(lastOne.time);
-        }
+        // A cotação do usuário não será mais atualizada baseada na última "vela fechada" (que pode ser de ontem)
+        // O Spot Price Real será puxado pelo Polling de baixo
+        // if (uniqueData.length > 0) {
+        //   const lastOne = uniqueData[uniqueData.length - 1];
+        //   setCurrentPrice(lastOne.close); 
+        //   setCurrentTime(lastOne.time);
+        // }
 
         // ---- CANDLESTICK ----
         seriesRef.current.setData(uniqueData.map((d: any) => ({ time: d.time, open: d.open, high: d.high, low: d.low, close: d.close })));
@@ -271,25 +272,32 @@ const MainSimulator = () => {
 
   // LIVE POLLING (Coração Vivo do Simulador)
   useEffect(() => {
-    // Ticks every 30 seconds to fetch real-time spot price
-    const interval = setInterval(async () => {
+    
+    // Função puxadora da "Cotação Vivo"
+    const fetchLiveSpot = async () => {
       try {
         const liveRes = await axios.get(`/api/quote/${ticker}`);
         const spotPrice = liveRes.data.results[0]?.regularMarketPrice;
         const spotTime = liveRes.data.results[0]?.regularMarketTime || new Date().toISOString();
         
         if (spotPrice) {
+          // Atualiza a Cotação Vivo sem usar dados do gráfico
           setCurrentPrice(spotPrice);
-          // Crucial: check limit orders
           processPendingOrders(ticker, spotPrice, spotTime);
         }
       } catch (err) {
         console.error("Live polling failed", err);
       }
-    }, 5000);
+    };
+
+    // Dispara a requisição IMEDIATAMENTE (Fechando o gap zero de preço)
+    fetchLiveSpot();
+
+    // Mantém o loop temporal de mercado
+    const interval = setInterval(fetchLiveSpot, 5000);
 
     return () => clearInterval(interval);
-  }, [ticker, processPendingOrders]);
+  }, [ticker]); // Retiramos o processPendingOrders para não ativar fetchs duplicados ao engatilhar uma requisição OCO
 
   return (
     <Container>
