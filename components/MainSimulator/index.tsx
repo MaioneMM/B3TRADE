@@ -272,7 +272,7 @@ const MainSimulator = () => {
               placeholder="Buscar (ex: BBDC4)" 
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              style={{ padding: '0.6rem 1rem', borderRadius: '20px', border: '1px solid #444', backgroundColor: '#1E1E24', color: '#fff', width: '220px', outline: 'none' }}
+              style={{ padding: '0.6rem 1rem', borderRadius: '20px', border: '1px solid #444', backgroundColor: '#1E1E24', color: '#fff', width: '100%', maxWidth: '220px', outline: 'none' }}
             />
             {searchResults.length > 0 && (
               <ul style={{ position: 'absolute', top: '100%', left: 0, zIndex: 10, background: '#1E1E24', border: '1px solid #444', borderRadius: '4px', listStyle: 'none', padding: 0, margin: '4px 0 0 0', width: '100%', maxHeight: '250px', overflowY: 'auto' }}>
@@ -288,9 +288,9 @@ const MainSimulator = () => {
             )}
           </div>
           
-          <div style={{ width: '1px', height: '24px', backgroundColor: '#444', margin: '0 5px' }} />
+          <div style={{ width: '1px', height: '24px', backgroundColor: '#444', margin: '0 5px', flexShrink: 0 }} />
           
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', overflowX: 'auto' }}>
+          <div className="favorites-scroll" style={{ display: 'flex', gap: '8px', alignItems: 'center', overflowX: 'auto', maxWidth: '100%', paddingBottom: '4px', flex: 1 }}>
             {favorites.map(fav => (
                <button key={fav} onClick={() => setTicker(fav)}
                  style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '0.3rem 0.8rem', borderRadius: '20px', backgroundColor: ticker === fav ? '#26a69a' : '#2B2B36', border: '1px solid transparent', color: '#fff', fontSize: '0.8rem', cursor: 'pointer', transition: '0.2s', whiteSpace: 'nowrap' }}>

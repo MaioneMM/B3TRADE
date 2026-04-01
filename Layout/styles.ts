@@ -2,19 +2,15 @@ import { createGlobalStyle } from 'styled-components';
 
 const GlobalStyle = createGlobalStyle`
   :root {
-    --text: #f1f5f9;
-    --text-muted: #94a3b8;
-    --background: #080b12;
-    --background-light: #0d1117;
-    --background-card: #111827;
+    --text: #f5f5f7;
+    --text-muted: #a1a1aa;
+    --background: #000000;
+    --background-light: #09090b;
+    --background-card: #18181b;
     --border: rgba(255,255,255,0.08);
-    --main: #52B788;
-    --main-dark: #2D6A4F;
-    --main-light: #95D5B2;
-    --accent-purple: #a855f7;
-    --accent-blue: #3b82f6;
-    --gradient-text: linear-gradient(135deg, #52B788 0%, #a855f7 50%, #3b82f6 100%);
-    --gradient-glow: linear-gradient(135deg, rgba(82,183,136,0.15) 0%, rgba(168,85,247,0.15) 100%);
+    --main: #10b981;
+    --main-dark: #047857;
+    --main-light: #34d399;
   }
 
   * {
@@ -25,12 +21,13 @@ const GlobalStyle = createGlobalStyle`
 
   html {
     scroll-behavior: smooth;
+    background-color: var(--background);
   }
 
   body {
     padding: 0;
     margin: 0;
-    font-family: 'Inter', sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     font-weight: 400;
     background-color: var(--background);
     color: var(--text);
@@ -46,7 +43,7 @@ const GlobalStyle = createGlobalStyle`
   input, button {
     border: none;
     outline: none;
-    font-family: 'Inter', sans-serif;
+    font-family: inherit;
   }
 
   button {
@@ -67,6 +64,10 @@ const GlobalStyle = createGlobalStyle`
   ::-webkit-scrollbar-thumb {
     background: var(--border);
     border-radius: 3px;
+    
+    &:hover {
+      background: rgba(255,255,255,0.2);
+    }
   }
 `;
 

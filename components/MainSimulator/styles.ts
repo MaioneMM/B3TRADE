@@ -32,11 +32,13 @@ export const TopBar = styled.div`
     align-items: center;
     gap: 15px;
     flex: 1;
+    min-width: 0;
 
     @media (max-width: 600px) {
       flex-direction: column;
       align-items: flex-start;
       gap: 10px;
+      width: 100%;
     }
   }
 
@@ -44,6 +46,7 @@ export const TopBar = styled.div`
     display: flex;
     align-items: center;
     gap: 15px;
+    white-space: nowrap;
 
     @media (max-width: 600px) {
       justify-content: space-between;
