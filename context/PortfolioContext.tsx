@@ -34,6 +34,7 @@ interface PortfolioContextProps {
   orders: Order[];
   pendingOrders: PendingOrder[];
   favorites: string[];
+  nickname: string;
   isLoaded: boolean;
   buyMarket: (ticker: string, quantity: number, currentPrice: number, currentTime: string, stopLoss?: number, takeProfit?: number) => Promise<void>;
   sellMarket: (ticker: string, quantity: number, currentPrice: number, currentTime: string) => Promise<void>;
@@ -42,6 +43,7 @@ interface PortfolioContextProps {
   processPendingOrders: (ticker: string, livePrice: number, liveTime: string) => Promise<void>;
   toggleFavorite: (ticker: string) => Promise<void>;
   resetPortfolio: () => Promise<void>;
+  updateNickname: (newNickname: string) => Promise<void>;
 }
 
 const PortfolioContext = createContext<PortfolioContextProps | undefined>(undefined);
@@ -66,6 +68,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [orders, setOrders] = useState<Order[]>([]);
   const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>([]);
   const [favorites, setFavorites] = useState<string[]>(['PETR4', 'VALE3', 'ITUB4']);
+  const [nickname, setNickname] = useState<string>('');
   const [isLoaded, setIsLoaded] = useState(false);
 
   const { addToast } = useToast();
@@ -109,6 +112,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         const data = userSnap.data();
         setBalance(data.balance ?? INITIAL_BALANCE);
         setFavorites(data.favorites ?? ['PETR4', 'VALE3', 'ITUB4']);
+        setNickname(data.nickname || '');
         await setDoc(userRef, updateData, { merge: true });
       } else {
         const initialData = { balance: INITIAL_BALANCE, favorites: ['PETR4', 'VALE3', 'ITUB4'], ...updateData };
@@ -449,6 +453,21 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
+  const updateNickname = async (newNickname: string) => {
+    if (!user) return addToast('Logue-se primeiro.', 'error');
+    const trimmed = newNickname.trim();
+    if (trimmed.length < 3) return addToast('O nickname deve ter pelo menos 3 caracteres.', 'error');
+    if (trimmed.length > 20) return addToast('O nickname deve ter no máximo 20 caracteres.', 'error');
+    try {
+      await setDoc(doc(db, 'users', user.uid), { nickname: trimmed }, { merge: true });
+      setNickname(trimmed);
+      addToast('Nickname atualizado com sucesso! 🎉', 'success');
+    } catch (e) {
+      console.error(e);
+      addToast('Falha ao salvar nickname.', 'error');
+    }
+  };
+
   return (
     <PortfolioContext.Provider value={{ 
       balance, 
@@ -456,6 +475,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       orders, 
       pendingOrders, 
       favorites,
+      nickname,
       isLoaded,
       buyMarket, 
       sellMarket, 
@@ -463,7 +483,9 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       cancelPendingOrder, 
       processPendingOrders, 
       toggleFavorite,
-      resetPortfolio 
+      resetPortfolio,
+      updateNickname,
+
     }}>
       {children}
     </PortfolioContext.Provider>

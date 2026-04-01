@@ -44,6 +44,7 @@ const Header: React.FC = () => {
               <Link href="/simulator/dashboard" className="nav-link" style={{ color: '#26a69a' }}>Carteira</Link>
               <Link href="/simulator/ranking" className="nav-link" style={{ color: '#FFD700' }}>Ranking</Link>
               <Link href="/commodities" className="nav-link" style={{ color: '#f59e0b' }}>Commodities</Link>
+              <Link href="/simulator/settings" className="nav-link" style={{ color: '#aaa' }}>⚙️</Link>
               <span style={{ color: '#444', padding: '0 4px' }}>|</span>
               <span style={{ fontSize: '0.85rem', color: '#888' }}>
                 <FiUser size={13} style={{ marginRight: 4, verticalAlign: 'middle' }} />
@@ -111,6 +112,9 @@ const Header: React.FC = () => {
               </Link>
               <Link href="/commodities" className="mobile-link" onClick={() => setOpen(false)} style={{ color: '#f59e0b' }}>
                 🛢️ Commodities
+              </Link>
+              <Link href="/simulator/settings" className="mobile-link" onClick={() => setOpen(false)} style={{ color: '#aaa' }}>
+                ⚙️ Configurações
               </Link>
               <div className="mobile-divider" />
               <button

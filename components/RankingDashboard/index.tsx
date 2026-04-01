@@ -38,7 +38,7 @@ const RankingDashboard = () => {
           if (pnl !== 0 || Object.keys(rankings).length > 0) {
              results.push({
                uid: doc.id,
-               displayName: data.displayName || 'Trader Anônimo',
+               displayName: data.nickname || data.displayName || 'Trader Anônimo',
                photoURL: data.photoURL || '',
                pnl
              });
