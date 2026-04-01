@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Container } from './styles';
 import { collection, query, limit, getDocs } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
@@ -96,7 +97,14 @@ const RankingDashboard = () => {
                 ) : (
                   <div className="avatar" />
                 )}
-                <div className="name">{u.displayName}</div>
+                <div className="name">
+                  <Link href={`/profile/${u.uid}`} style={{ color: '#fff', textDecoration: 'none' }}
+                    onMouseEnter={e => (e.currentTarget.style.color = '#26a69a')}
+                    onMouseLeave={e => (e.currentTarget.style.color = '#fff')}
+                  >
+                    {u.displayName}
+                  </Link>
+                </div>
                 <div className={`pnl ${u.pnl > 0 ? 'positive' : u.pnl < 0 ? 'negative' : 'neutral'}`}>
                   {u.pnl > 0 ? '+' : ''}R$ {u.pnl.toFixed(2)}
                 </div>

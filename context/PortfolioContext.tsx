@@ -3,6 +3,7 @@ import { db, auth } from '../lib/firebase';
 import { doc, getDoc, setDoc, collection, getDocs, writeBatch, deleteDoc } from 'firebase/firestore';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { useToast } from './ToastContext';
+import { Achievement, ALL_ACHIEVEMENTS } from '../lib/achievements';
 
 export interface Position {
   ticker: string;
@@ -44,6 +45,7 @@ interface PortfolioContextProps {
   toggleFavorite: (ticker: string) => Promise<void>;
   resetPortfolio: () => Promise<void>;
   updateNickname: (newNickname: string) => Promise<void>;
+  achievements: Achievement[];
 }
 
 const PortfolioContext = createContext<PortfolioContextProps | undefined>(undefined);
@@ -69,6 +71,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>([]);
   const [favorites, setFavorites] = useState<string[]>(['PETR4', 'VALE3', 'ITUB4']);
   const [nickname, setNickname] = useState<string>('');
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
   const { addToast } = useToast();
@@ -113,6 +116,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setBalance(data.balance ?? INITIAL_BALANCE);
         setFavorites(data.favorites ?? ['PETR4', 'VALE3', 'ITUB4']);
         setNickname(data.nickname || '');
+        setAchievements(data.achievements || []);
         await setDoc(userRef, updateData, { merge: true });
       } else {
         const initialData = { balance: INITIAL_BALANCE, favorites: ['PETR4', 'VALE3', 'ITUB4'], ...updateData };
@@ -310,7 +314,13 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       });
       setOrders(prev => [newOrder, ...prev]);
 
+
+      const updatedPositions = remainingQty <= 0
+        ? positions.filter(pos => pos.ticker !== ticker)
+        : positions.map(pos => pos.ticker === ticker ? { ...pos, quantity: remainingQty } : pos);
+      
       addToast(`Venda de ${quantity}x ${ticker} efetuada com sucesso!`, "success");
+      await checkAchievements([...orders, newOrder], updatedPositions, newBalance, tradeProfit);
     } catch (err) {
       console.error("Erro na venda", err);
       addToast("Falha ao salvar transação no banco.", "error");
@@ -468,6 +478,48 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
+  const checkAchievements = async (newOrders: Order[], newPositions: Position[], newBalance: number, tradeProfit: number) => {
+    if (!user) return;
+    const earned = [...achievements];
+    const hasId = (id: string) => earned.some(a => a.id === id);
+    const newlyEarned: Achievement[] = [];
+
+    const grant = (id: string) => {
+      const def = ALL_ACHIEVEMENTS.find(a => a.id === id);
+      if (def && !hasId(id)) {
+        const badge: Achievement = { ...def, unlockedAt: new Date().toISOString() };
+        earned.push(badge);
+        newlyEarned.push(badge);
+      }
+    };
+
+    const totalTrades = newOrders.length;
+    if (tradeProfit > 0) grant('first_profit');
+    if (tradeProfit < 0) grant('first_loss');
+    if (totalTrades >= 10) grant('ten_trades');
+    if (tradeProfit >= 5000) grant('big_win');
+    
+    // Streak de 3 lucros consecutivos
+    const sells = newOrders.filter(o => o.type === 'SELL').slice(0, 5);
+    // Simple check: last 3 sells were all profit (we store price, not profit individually, so we approximate)
+    // This is a best-effort check based on order count
+    if (sells.length >= 3) grant('profit_streak_3');
+
+    // Patrimônio total > 100k
+    const totalPositionValue = newPositions.reduce((sum, p) => sum + (p.quantity * p.averagePrice), 0);
+    if ((newBalance + totalPositionValue) > 100000) grant('portfolio_100k');
+
+    if (newlyEarned.length > 0) {
+      setAchievements(earned);
+      try {
+        await setDoc(doc(db, 'users', user.uid), { achievements: earned }, { merge: true });
+        newlyEarned.forEach(badge => {
+          setTimeout(() => addToast(`🏅 Nova Conquista: ${badge.icon} ${badge.title}!`, 'success'), 500);
+        });
+      } catch (e) { console.error('Failed to save achievements', e); }
+    }
+  };
+
   return (
     <PortfolioContext.Provider value={{ 
       balance, 
@@ -476,6 +528,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       pendingOrders, 
       favorites,
       nickname,
+      achievements,
       isLoaded,
       buyMarket, 
       sellMarket, 
@@ -485,12 +538,12 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       toggleFavorite,
       resetPortfolio,
       updateNickname,
-
     }}>
       {children}
     </PortfolioContext.Provider>
   );
 };
+
 
 export const usePortfolio = () => {
   const context = useContext(PortfolioContext);

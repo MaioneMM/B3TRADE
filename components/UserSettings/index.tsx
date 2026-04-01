@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { usePortfolio } from '../../context/PortfolioContext';
 import { useAuth } from '../../context/SignUp';
 import styled from 'styled-components';
+import BadgeIcon from '../BadgeIcon';
+import { ALL_ACHIEVEMENTS } from '../../lib/achievements';
 
 const Container = styled.div`
   max-width: 700px;
@@ -147,7 +149,7 @@ const Card = styled.div`
 `;
 
 const UserSettings: React.FC = () => {
-  const { nickname, updateNickname } = usePortfolio();
+  const { nickname, updateNickname, achievements } = usePortfolio();
   const auth = useAuth();
   const user = auth?.currentUser;
 
@@ -214,8 +216,32 @@ const UserSettings: React.FC = () => {
         </div>
         <div className="counter">{inputVal.length}/20 caracteres</div>
       </Card>
+
+      <Card>
+        <h2>🏅 Minhas Conquistas</h2>
+        <p>
+          {achievements.length === 0
+            ? 'Nenhuma conquista desbloqueada ainda. Comece a operar para ganhar medalhas!'
+            : `Você desbloqueou ${achievements.length} de ${ALL_ACHIEVEMENTS.length} conquistas.`}
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem' }}>
+          {ALL_ACHIEVEMENTS.map(def => {
+            const earned = achievements.find(a => a.id === def.id);
+            return (
+              <BadgeIcon
+                key={def.id}
+                achievement={earned || def as any}
+                unlocked={!!earned}
+                size="md"
+                showTitle
+              />
+            );
+          })}
+        </div>
+      </Card>
     </Container>
   );
 };
 
 export default UserSettings;
+

@@ -38,23 +38,35 @@ class MyDocument extends Document {
             rel="stylesheet"
           />
           <link rel="icon" href="/favicon.svg" />
+          <meta name="description" content="B3Trade - Simulador de Bolsa de Valores gratuito com dados reais da B3. Aprenda a investir, faça day trade virtual, e dispute no ranking global sem arriscar dinheiro real." />
           <meta
             name="keywords"
-            content="API, Desenvolvimento, Cripto, Criptomoeda, Bitcoin, Ethereum, Bovespa, Ibovespa, Negócios, Informações financeiras, Investimento, Investidor, Notícias de mercado, Pesquisa de ações, Avaliação de ações, notícias de negócios, economia, finanças, ferramentas de investimento, hipotecas, fundos mútuos, finanças pessoais, cotação, imóveis, aposentadoria, ações, ações, impostos , monitorar portfólio"
+            content="simulador bolsa de valores, simulador B3, day trade virtual, simulador de investimentos, aprender a investir, trading simulator, home broker gratuito, simulador ações Brasil, rank traders, bolsa valores grátis, IBOVESPA, PETR4, VALE3, ITUB4, simulação financeira"
           />
-          <meta name="theme-color" content="#52B788" />
-          <meta property="og:title" content="B3TRADE" />
+          <meta name="theme-color" content="#0a0a0f" />
+          <meta name="robots" content="index, follow" />
+          <meta name="author" content="B3Trade" />
+
+          {/* Open Graph (Facebook, LinkedIn, WhatsApp) */}
+          <meta property="og:site_name" content="B3Trade" />
+          <meta property="og:title" content="B3Trade - Simulador de Bolsa de Valores" />
           <meta property="og:type" content="website" />
-          <meta property="og:image" content="https://brapi.ga/favicon.png" />
-          <meta property="og:image:width" content="512" />
-          <meta property="og:image:height" content="512" />
+          <meta property="og:image" content="https://b3trade.ga/og-image.png" />
+          <meta property="og:image:width" content="1200" />
+          <meta property="og:image:height" content="630" />
           <meta
             property="og:description"
-            lang="pt-BR"
-            content="API ilimitada da BOVESPA e Cryptomoedas. Ajudamos desenvolvedores a construir o futuro das fintechs democratizando o acesso aos dados do mercado financeiro brasileiro."
+            content="Simule investimentos na Bolsa de Valores brasileira com dados reais. Compre e venda ações, acompanhe seu PnL e dispute o ranking global de traders. Grátis e sem risco."
           />
           <meta property="og:url" content="https://b3trade.ga" />
-          <meta property="og:locale" content="pt-BR" />
+          <meta property="og:locale" content="pt_BR" />
+
+          {/* Twitter Cards */}
+          <meta name="twitter:card" content="summary_large_image" />
+          <meta name="twitter:title" content="B3Trade - Simulador de Bolsa de Valores" />
+          <meta name="twitter:description" content="Simule investimentos na B3 com dados reais. Aprenda day trade sem arriscar dinheiro. Ranking global de traders." />
+          <meta name="twitter:image" content="https://b3trade.ga/og-image.png" />
+
           <link rel="manifest" href="/manifest.json" />
           <meta
             name="google-site-verification"
