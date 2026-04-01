@@ -468,7 +468,11 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const emptyRankings = { weekId, weeklyPnl: 0, monthId, monthlyPnl: 0, yearId, yearlyPnl: 0 };
 
       const batch = writeBatch(db);
-      batch.set(doc(db, 'users', user.uid), { balance: INITIAL_BALANCE, rankings: emptyRankings }, { merge: true });
+      batch.set(doc(db, 'users', user.uid), { 
+        balance: INITIAL_BALANCE, 
+        rankings: emptyRankings,
+        totalOrders: 0 // Zera o contador público de operações
+      }, { merge: true });
       
       positions.forEach(p => batch.delete(doc(db, 'users', user.uid, 'positions', p.ticker)));
       pendingOrders.forEach(p => batch.delete(doc(db, 'users', user.uid, 'pendingOrders', p.id)));
@@ -482,6 +486,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setPositions([]);
       setOrders([]);
       setPendingOrders([]);
+      setTotalOrders(0); // Zera o estado local
       addToast("Seus dados foram purgados. Simulador resetado aos R$ 100.000 iniciais.", "success");
 
       // Conceder medalha de Sobrevivente
