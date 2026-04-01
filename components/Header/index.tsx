@@ -40,7 +40,7 @@ const Header: React.FC = () => {
         <nav className="desktop-nav">
           {isSimulatorEnv ? (
             <>
-              <Link href="/simulator" className="nav-link">Terminal</Link>
+              <Link href="/simulator" className="nav-link">Home Broker</Link>
               <Link href="/simulator/dashboard" className="nav-link" style={{ color: '#26a69a' }}>Carteira</Link>
               <Link href="/simulator/ranking" className="nav-link" style={{ color: '#FFD700' }}>Ranking</Link>
               <Link href="/commodities" className="nav-link" style={{ color: '#f59e0b' }}>Commodities</Link>
@@ -102,7 +102,7 @@ const Header: React.FC = () => {
           {isSimulatorEnv ? (
             <>
               <Link href="/simulator" className="mobile-link" onClick={() => setOpen(false)}>
-                <FiBarChart2 size={14} style={{ marginRight: 6 }} />Terminal
+                <FiBarChart2 size={14} style={{ marginRight: 6 }} />Home Broker
               </Link>
               <Link href="/simulator/dashboard" className="mobile-link" onClick={() => setOpen(false)} style={{ color: '#26a69a' }}>
                 ⭐ Minha Carteira

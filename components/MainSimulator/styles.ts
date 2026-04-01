@@ -162,6 +162,13 @@ export const ChartContainer = styled(Panel)`
     border-radius: 6px;
     backdrop-filter: blur(4px);
     border: 1px solid #333;
+    max-width: calc(100% - 20px);
+    overflow-x: auto;
+    
+    /* Hide scrollbar but keep functionality */
+    &::-webkit-scrollbar { display: none; }
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 
     button {
       background: transparent;
@@ -172,6 +179,8 @@ export const ChartContainer = styled(Panel)`
       cursor: pointer;
       border-radius: 4px;
       transition: all 0.2s;
+      white-space: nowrap;
+      flex-shrink: 0;
 
       &:hover {
         background-color: #444;
