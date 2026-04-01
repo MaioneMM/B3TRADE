@@ -59,9 +59,9 @@ export const ALL_ACHIEVEMENTS: Omit<Achievement, 'unlockedAt'>[] = [
     rarity: 'epic',
   },
   {
-    id: 'portfolio_100k',
+    id: 'portfolio_1m',
     title: 'Carteira Robusta',
-    description: 'Patrimônio total (saldo + posições) ultrapassou R$ 100.000.',
+    description: 'Patrimônio total (saldo + posições) ultrapassou R$ 1.000.000.',
     icon: '💰',
     color: '#eab308',
     rarity: 'epic',

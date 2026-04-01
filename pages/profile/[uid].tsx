@@ -129,20 +129,35 @@ const ProfilePage = () => {
       setLoading(true);
       try {
         const userSnap = await getDoc(doc(db, 'users', uid));
-        if (!userSnap.exists()) { setNotFound(true); return; }
-        const data = userSnap.data();
-        const ordersSnap = await getDocs(collection(db, 'users', uid, 'orders'));
-        setProfile({
+        if (!userSnap.exists()) {
+          setNotFound(true);
+          return;
+        }
+        
+        const data = userSnap.data() || {};
+        const basicProfile: PublicProfile = {
           nickname: data.nickname || '',
           displayName: data.displayName || 'Trader Anônimo',
           photoURL: data.photoURL || '',
           achievements: data.achievements || [],
-          ordersCount: ordersSnap.size,
+          ordersCount: 0, // padrão inicial
           weeklyPnl: data.rankings?.weeklyPnl || 0,
           monthlyPnl: data.rankings?.monthlyPnl || 0,
-        });
+        };
+
+        setProfile(basicProfile);
+
+        // Tenta carregar dados extras (total de ordens)
+        // Isso pode falhar se não formos o dono do perfil (Firestore Rules)
+        try {
+          const ordersSnap = await getDocs(collection(db, 'users', uid, 'orders'));
+          setProfile(prev => prev ? { ...prev, ordersCount: ordersSnap.size } : null);
+        } catch (err) {
+          console.log("Acesso restrito às estatísticas detalhadas deste trader.");
+        }
+
       } catch (e) {
-        console.error(e);
+        console.error("Erro ao carregar perfil:", e);
         setNotFound(true);
       } finally {
         setLoading(false);

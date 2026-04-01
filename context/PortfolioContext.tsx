@@ -505,9 +505,9 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // This is a best-effort check based on order count
     if (sells.length >= 3) grant('profit_streak_3');
 
-    // Patrimônio total > 100k
+    // Patrimônio total > R$ 1.000.000
     const totalPositionValue = newPositions.reduce((sum, p) => sum + (p.quantity * p.averagePrice), 0);
-    if ((newBalance + totalPositionValue) > 100000) grant('portfolio_100k');
+    if ((newBalance + totalPositionValue) > 1000000) grant('portfolio_1m');
 
     if (newlyEarned.length > 0) {
       setAchievements(earned);
