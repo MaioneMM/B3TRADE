@@ -483,6 +483,19 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setOrders([]);
       setPendingOrders([]);
       addToast("Seus dados foram purgados. Simulador resetado aos R$ 100.000 iniciais.", "success");
+
+      // Conceder medalha de Sobrevivente
+      const earned = [...achievements];
+      if (!earned.some(a => a.id === 'survivor')) {
+        const def = ALL_ACHIEVEMENTS.find(a => a.id === 'survivor');
+        if (def) {
+          const badge = { ...def, unlockedAt: new Date().toISOString() };
+          const newAchievements = [...earned, badge];
+          setAchievements(newAchievements);
+          await setDoc(doc(db, 'users', user.uid), { achievements: newAchievements }, { merge: true });
+          setTimeout(() => addToast(`🏅 Nova Conquista: ${badge.icon} ${badge.title}!`, 'success'), 1000);
+        }
+      }
     } catch (e) {
       console.error(e);
       addToast("Falha ao resetar na nuvem.", "error");
@@ -507,16 +520,28 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const checkAchievements = async (newOrders: Order[], newPositions: Position[], newBalance: number, tradeProfit: number) => {
     if (!user) return;
     const earned = [...achievements];
-    const hasId = (id: string) => earned.some(a => a.id === id);
     const newlyEarned: Achievement[] = [];
 
-    const grant = (id: string) => {
+    const grant = async (id: string) => {
       const def = ALL_ACHIEVEMENTS.find(a => a.id === id);
-      if (def && !hasId(id)) {
+      const hasId = earned.some(a => a.id === id);
+      
+      if (def && !hasId) {
         const badge: Achievement = { ...def, unlockedAt: new Date().toISOString() };
         earned.push(badge);
         newlyEarned.push(badge);
+        
+        // Atualiza no Firebase e localmente
+        setAchievements([...earned]);
+        try {
+          await setDoc(doc(db, 'users', user.uid), { achievements: earned }, { merge: true });
+          setTimeout(() => addToast(`🏅 Nova Conquista: ${badge.icon} ${badge.title}!`, 'success'), 500);
+        } catch (e) {
+          console.error(`Failed to grant achievement ${id}`, e);
+        }
+        return true;
       }
+      return false;
     };
 
     const totalTrades = newOrders.length;
