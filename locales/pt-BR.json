@@ -1,0 +1,13 @@
+{
+  "home": {
+    "heroTitle": "Interface de Trading Profissional",
+    "heroDesc": "Acompanhe mercados em tempo real. Construa estratégias e teste em um ambiente de simulação ultra-realista.",
+    "startTradingBtn": "Começar a Operar"
+  },
+  "header": {
+    "dashboard": "DASHBOARD",
+    "markets": "MERCADOS",
+    "portfolio": "PORTFÓLIO",
+    "settings": "CONFIGURAÇÕES"
+  }
+}

@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import { FiMenu, FiX, FiBarChart2, FiLogOut, FiUser } from 'react-icons/fi';
 import { useAuth } from '../../context/SignUp';
 import { Container } from './styles';
+import LanguageSwitcher from '../LanguageSwitcher';
 
 const Header: React.FC = () => {
   const auth = useAuth();
@@ -81,6 +82,7 @@ const Header: React.FC = () => {
               </>
             )
           )}
+          <LanguageSwitcher />
 
           {/* Mobile toggle */}
           <button

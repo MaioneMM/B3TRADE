@@ -84,7 +84,7 @@ const SignUp = ({ create = false }: any) => {
         )}
 
         {!auth?.currentUser && (
-          <form onSubmit={handleEmailAuth}>
+          <form onSubmit={handleEmailAuth} style={{ display: 'none' }}>
             <input 
               type="email" 
               placeholder="Seu melhor email" 
@@ -107,12 +107,12 @@ const SignUp = ({ create = false }: any) => {
         )}
 
         {!auth?.currentUser && (
-          <div className="separator">ou use suas redes sociais</div>
+          <div className="separator" style={{ display: 'none' }}>ou use suas redes sociais</div>
         )}
 
         {!auth?.currentUser && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
-            <button onClick={() => auth.signinWithGithub()}>
+            <button onClick={() => auth.signinWithGithub()} style={{ display: 'none' }}>
               <FiGithub size={'1.2rem'} color="#fafafa" />
               {create ? `Criar conta com Github` : `Entrar com Github`}
             </button>

@@ -1,0 +1,13 @@
+{
+  "home": {
+    "heroTitle": "Professional\nTrading\nInterface",
+    "heroDesc": "Experience real-time markets. Build strategies in a powerful, simulation environment.",
+    "startTradingBtn": "Start Trading"
+  },
+  "header": {
+    "dashboard": "DASHBOARD",
+    "markets": "MARKETS",
+    "portfolio": "PORTFOLIO",
+    "settings": "SETTINGS"
+  }
+}

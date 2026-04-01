@@ -1,8 +1,10 @@
 import React from 'react';
 import Link from 'next/link';
 import { Container } from './styles';
+import { useTranslation } from '../../hooks/useTranslation';
 
 const Main: React.FC = () => {
+  const { t } = useTranslation();
   return (
     <Container>
       {/* ── BACKGROUND ESPACIAL / MESH ── */}
@@ -27,10 +29,10 @@ const Main: React.FC = () => {
             <div className="md-main">
               <div className="md-header">
                 <nav className="md-nav">
-                  <span className="active">DASHBOARD</span>
-                  <span>MARKETS</span>
-                  <span>PORTFOLIO</span>
-                  <span>SETTINGS</span>
+                  <span className="active">{t('header.dashboard')}</span>
+                  <span>{t('header.markets')}</span>
+                  <span>{t('header.portfolio')}</span>
+                  <span>{t('header.settings')}</span>
                 </nav>
                 <div className="md-controls">
                   <span className="md-btn">A/A</span>
@@ -162,15 +164,18 @@ const Main: React.FC = () => {
 
         <div className="hero-right">
           <h1 className="hero-title">
-            Professional<br/>
-            Trading<br/>
-            Interface
+            {t('home.heroTitle').split('\n').map((line: string, i: number) => (
+              <React.Fragment key={i}>
+                {line}
+                <br/>
+              </React.Fragment>
+            ))}
           </h1>
           <p className="hero-desc">
-            Experience real-time markets. Build strategies in a powerful, simulation environment.
+            {t('home.heroDesc')}
           </p>
           <Link href="/simulator" className="btn-primary">
-            Start Trading
+            {t('home.startTradingBtn')}
           </Link>
         </div>
       </section>
