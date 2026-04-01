@@ -3,6 +3,8 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import Header from '../../components/Header';
 import Layout from '../../Layout';
+import Link from 'next/link';
+import { FiArrowLeft } from 'react-icons/fi';
 import { db } from '../../lib/firebase';
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { Achievement, ALL_ACHIEVEMENTS } from '../../lib/achievements';
@@ -179,6 +181,10 @@ const ProfilePage = () => {
       <Layout>
         <Header />
         <Container>
+          <Link href="/simulator/ranking" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: '#26a69a', textDecoration: 'none', marginBottom: '1.5rem', fontSize: '0.9rem', fontWeight: 600 }}>
+            <FiArrowLeft size={16} /> Voltar ao Ranking
+          </Link>
+          
           {loading && <p style={{ color: '#888', textAlign: 'center', marginTop: '4rem' }}>Carregando perfil...</p>}
           {notFound && <p style={{ color: '#ef5350', textAlign: 'center', marginTop: '4rem' }}>Perfil não encontrado.</p>}
           

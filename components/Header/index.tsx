@@ -13,7 +13,9 @@ const Header: React.FC = () => {
   const [scrolled, setScrolled] = useState(false);
 
   // Detect if we're inside the simulator/platform environment
-  const isSimulatorEnv = router.pathname.startsWith('/simulator') || router.pathname.startsWith('/commodities');
+  const isSimulatorEnv = router.pathname.startsWith('/simulator') || 
+                         router.pathname.startsWith('/commodities') || 
+                         router.pathname.startsWith('/profile');
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
