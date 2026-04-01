@@ -12,7 +12,7 @@ const DashboardView = () => {
       <AuthGuard>
         <div>
           <Head>
-            <title>Minha Carteira - B3Trade</title>
+            <title>Minha Carteira | Dashboard - B3Trade</title>
           </Head>
           <Layout>
             <Header />

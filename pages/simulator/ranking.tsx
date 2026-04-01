@@ -11,7 +11,7 @@ const RankingPage = () => {
       <AuthGuard>
         <div>
           <Head>
-            <title>Ranking - B3TRADE</title>
+            <title>Ranking Global de Traders - B3TRADE</title>
           </Head>
           <Layout>
             <Header />

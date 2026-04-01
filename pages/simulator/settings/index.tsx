@@ -11,7 +11,7 @@ const SettingsPage = () => {
       <AuthGuard>
         <div>
           <Head>
-            <title>Configurações - B3TRADE</title>
+            <title>Configurações de Perfil - B3TRADE</title>
             <meta name="description" content="Personalize seu perfil de trader. Escolha seu nickname exclusivo que aparece no ranking e na plataforma." />
           </Head>
           <Layout>

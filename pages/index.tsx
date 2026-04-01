@@ -8,7 +8,7 @@ const Home = () => {
   return (
     <div>
       <Head>
-        <title>B3TRADE - API de Ações</title>
+        <title>B3TRADE - Simulador de Investimentos</title>
       </Head>
       <Layout>
         <Header />

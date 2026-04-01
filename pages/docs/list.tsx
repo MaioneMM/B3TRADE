@@ -74,7 +74,7 @@ const Docs = ({ stocks }: InferGetStaticPropsType<typeof getStaticProps>) => {
   return (
     <div>
       <Head>
-        <title>B3Trade - API de Ações da Bovespa</title>
+        <title>B3Trade - Cotações em Tempo Real</title>
       </Head>
       <Layout>
         <Header />
