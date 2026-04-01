@@ -10,6 +10,7 @@ interface RankingUser {
   displayName: string;
   photoURL: string;
   pnl: number;
+  totalOrders: number;
 }
 
 const RankingDashboard = () => {
@@ -41,7 +42,8 @@ const RankingDashboard = () => {
                uid: doc.id,
                displayName: data.nickname || data.displayName || 'Trader Anônimo',
                photoURL: data.photoURL || '',
-               pnl
+               pnl,
+               totalOrders: data.totalOrders || 0,
              });
           }
         });

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db, auth } from '../lib/firebase';
-import { doc, getDoc, setDoc, collection, getDocs, writeBatch, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs, writeBatch, deleteDoc, increment } from 'firebase/firestore';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { useToast } from './ToastContext';
 import { Achievement, ALL_ACHIEVEMENTS } from '../lib/achievements';
@@ -46,6 +46,7 @@ interface PortfolioContextProps {
   resetPortfolio: () => Promise<void>;
   updateNickname: (newNickname: string) => Promise<void>;
   achievements: Achievement[];
+  totalOrders: number;
 }
 
 const PortfolioContext = createContext<PortfolioContextProps | undefined>(undefined);
@@ -72,6 +73,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [favorites, setFavorites] = useState<string[]>(['PETR4', 'VALE3', 'ITUB4']);
   const [nickname, setNickname] = useState<string>('');
   const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [totalOrders, setTotalOrders] = useState<number>(0);
   const [isLoaded, setIsLoaded] = useState(false);
 
   const { addToast } = useToast();
@@ -117,11 +119,27 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setFavorites(data.favorites ?? ['PETR4', 'VALE3', 'ITUB4']);
         setNickname(data.nickname || '');
         setAchievements(data.achievements || []);
+        
+        let ordersCount = data.totalOrders;
+        if (ordersCount === undefined) {
+          // Sincronização inicial para usuários antigos
+          const ordersSnap = await getDocs(collection(db, 'users', u.uid, 'orders'));
+          ordersCount = ordersSnap.size;
+          updateData.totalOrders = ordersCount;
+        }
+        setTotalOrders(ordersCount);
+
         await setDoc(userRef, updateData, { merge: true });
       } else {
-        const initialData = { balance: INITIAL_BALANCE, favorites: ['PETR4', 'VALE3', 'ITUB4'], ...updateData };
+        const initialData = { 
+          balance: INITIAL_BALANCE, 
+          favorites: ['PETR4', 'VALE3', 'ITUB4'], 
+          totalOrders: 0,
+          ...updateData 
+        };
         await setDoc(userRef, initialData, { merge: true });
         setBalance(INITIAL_BALANCE);
+        setTotalOrders(0);
       }
 
       const posSnap = await getDocs(collection(db, 'users', u.uid, 'positions'));
@@ -193,9 +211,12 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       
       // 3. Registrar Histórico da Ordem
       const orderRef = doc(collection(db, 'users', user.uid, 'orders'));
-      const executionTime = new Date().toISOString(); 
+      const executionTime = new Date().toISOString();
       const newOrder: Order = { ticker, type: 'BUY', quantity, price: currentPrice, time: executionTime };
       batch.set(orderRef, newOrder);
+
+      // Incrementa o contador de ordens público no documento do usuário
+      batch.update(doc(db, 'users', user.uid), { totalOrders: increment(1) });
 
       // 4. Lógica OCO (Alvos Simultâneos)
       const newPends: PendingOrder[] = [];
@@ -229,6 +250,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       // Atualiza o estado da tela só se deu certo
       setBalance(newBalance);
+      setTotalOrders(prev => prev + 1);
       setPositions(prev => {
         if (existing) {
           return prev.map(p => p.ticker === ticker ? { ...p, quantity: newQuantity, averagePrice: newAvgPrice } : p);
@@ -302,9 +324,13 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const newOrder: Order = { ticker, type: 'SELL', quantity, price: currentPrice, time: executionTime };
       batch.set(orderRef, newOrder);
 
+      // Incrementa o contador de ordens público no documento do usuário
+      batch.update(doc(db, 'users', user.uid), { totalOrders: increment(1) });
+
       await batch.commit();
 
       setBalance(newBalance);
+      setTotalOrders(prev => prev + 1);
       setPositions(prev => {
         if (remainingQty <= 0) {
           return prev.filter(pos => pos.ticker !== ticker);
@@ -529,6 +555,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       favorites,
       nickname,
       achievements,
+      totalOrders,
       isLoaded,
       buyMarket, 
       sellMarket, 
