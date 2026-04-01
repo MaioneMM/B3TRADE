@@ -85,6 +85,7 @@ export const Container = styled.div`
     display: flex;
     overflow: hidden;
     box-shadow: 0 0 50px rgba(16, 185, 129, 0.15), 0 30px 60px rgba(0,0,0,0.6);
+    width: 100%;
   }
 
   /* Sidebar */
@@ -347,6 +348,7 @@ export const Container = styled.div`
     .hero-right {
       order: -1;
       align-items: center;
+      padding: 0;
     }
 
     .hero-desc {
@@ -360,7 +362,61 @@ export const Container = styled.div`
   }
 
   @media (max-width: 768px) {
-    .md-content { flex-direction: column; }
-    .md-right-panel { width: 100%; }
+    .hero {
+      padding: 3rem 1rem;
+    }
+    .mockup-dashboard {
+      flex-direction: column;
+    }
+    .md-sidebar {
+      width: 100%;
+      flex-direction: row;
+      border-right: none;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      padding: 0.5rem 1rem;
+      gap: 1rem;
+      justify-content: space-between;
+    }
+    .md-icon.bottom {
+      margin-top: 0;
+    }
+    .md-content {
+      flex-direction: column;
+      padding: 1rem;
+      gap: 1rem;
+    }
+    .md-header {
+      flex-direction: column;
+      gap: 1rem;
+      align-items: center;
+    }
+    .md-nav {
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.8rem;
+    }
+    .md-chart-area {
+      padding: 1rem 0.5rem;
+    }
+    .md-chart-canvas {
+      padding-right: 0;
+      border-right: none;
+      height: 150px;
+    }
+    .y-axis {
+      display: none; /* Hide Y-Axis on very small screens to save space */
+    }
+    .md-volume-canvas {
+      padding-right: 0;
+    }
+    .md-legend, .price-details {
+      display: none; /* Hide complex legends */
+    }
+    .md-right-panel {
+      width: 100%;
+    }
+    .md-watchlist, .md-performance {
+      padding: 0.5rem;
+    }
   }
 `;
